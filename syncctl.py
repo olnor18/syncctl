@@ -141,7 +141,11 @@ def extract_images(k8s_manifests: str) -> list[str]:
     images = []
     for d in yaml.load_all(k8s_manifests, Loader=yaml.SafeLoader):
         # TODO: Handle kind: list + cephVersion
-        if d is not None and d["kind"] in ["Deployment", "StatefulSet", "DaemonSet"]:
+        if d is None:
+            continue
+        if d["kind"] == "CronJob":
+            d["spec"] = d["spec"]["jobTemplate"]["spec"]
+        if d["kind"] in ["Deployment", "ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"]:
             containers = d["spec"]["template"]["spec"]["containers"]
             if "initContainers" in d["spec"]["template"]["spec"]:
                 containers += d["spec"]["template"]["spec"]["initContainers"]
