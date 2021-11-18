@@ -9,7 +9,8 @@
             "nidhogg-v0.5.0.tgz",
             "nidhogg-v0.5.1.tgz",
             "nidhogg-v1.0.2-rc-10.tgz",
-            "nidhogg-v1.0.2-rc-11.tgz"
+            "nidhogg-v1.0.2-rc-11.tgz",
+            "loadbalancer-0.1.6.tgz"
         ],
         "values": {
             "config.externalProxy": "127.0.0.1:80"
