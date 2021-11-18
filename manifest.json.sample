@@ -3,7 +3,7 @@
         "api_versions": [
             "networking.k8s.io/v1/IngressClass"
         ],
-        "commit": "a389228babb20a7cd261a89c55a700c0ac2a6b71",
+        "commit": "2cc33ca4f4883fe6f5c942432b9f178c553e0033",
         "repository": "https://github.com/distributed-technologies/helm-charts.git",
         "skip_charts": [
             "nidhogg-v0.5.0.tgz",
@@ -317,7 +317,7 @@
         }
     ],
     "yggdrasil_repository": {
-        "commit": "471959dbb7b5dd21a62debc517403e4e5c57f44e",
+        "commit": "00d6a62598bc7833bde3e067043fe842bbbccbbf",
         "repository": "https://github.com/distributed-technologies/yggdrasil.git"
     }
 }
