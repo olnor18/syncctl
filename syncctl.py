@@ -7,6 +7,8 @@ import os
 import hashlib
 import subprocess
 import shutil
+import tarfile
+import datetime
 from pathlib import Path
 from argparse import ArgumentParser
 from logging import basicConfig
@@ -34,6 +36,10 @@ ci_parser = subcommands.add_parser(
 ci_parser = subcommands.add_parser(
     "resolve-images",
     help="resolve container images to digest and update the manifest file",
+)
+ci_parser = subcommands.add_parser(
+    "tar",
+    help="create a tarball",
 )
 
 def mirror_yggdrasil(c: dict) -> None:
@@ -207,6 +213,13 @@ def resolve_images(c: dict, manifest: dict) -> None:
     manifest["images"] = list(images.values())
     save_manifest(manifest)
 
+def tar() -> None:
+    name = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
+    with tarfile.open(f"{name}.tar", "w") as tar:
+        tar.add("sync.sh", arcname=f"{name}/sync.sh")
+        tar.add("work", arcname=name)
+    print(f"Created {name}.tar")
+
 def save_manifest(manifest: dict) -> dict:
     with open("manifest.json.tmp", "w") as f:
         json.dump(manifest, f, indent=4, sort_keys=True)
@@ -234,6 +247,8 @@ def main() -> None:
         mirror_images(manifest["images"])
     elif "resolve-images" == args.subcommand:
         resolve_images(manifest["helm_repository"], manifest)
+    elif "tar" == args.subcommand:
+        tar()
     else:
         parser.print_help()
 

@@ -8,14 +8,15 @@
 
 ```sh
 $ ./syncctl
-usage: syncctl [-h] [-v] {mirror-yggdrasil,mirror-helm,mirror-images,resolve-images} ...
+usage: syncctl [-h] [-v] {mirror-yggdrasil,mirror-helm,mirror-images,resolve-images,tar} ...
 
 positional arguments:
-  {mirror-yggdrasil,mirror-helm,mirror-images,resolve-images}
+  {mirror-yggdrasil,mirror-helm,mirror-images,resolve-images,tar}
     mirror-yggdrasil    mirror the yggdrasil git repository to the local fs
     mirror-helm         mirror the helm git repository to the local fs and download all charts
     mirror-images       mirror the container images to the local fs
     resolve-images      resolve container images to digest and update the manifest file
+    tar                 create a tarball
 
 optional arguments:
   -h, --help            show this help message and exit
