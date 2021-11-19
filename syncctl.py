@@ -187,13 +187,20 @@ def resolve_image(image: str) -> str:
 
 def process_image(image_reference: str) -> dict:
     debug(f"Processing image: {image_reference}")
-    digest = resolve_image(image_reference)
-    debug(f"Image {image_reference} resolved to {digest}")
+    if "@" in image_reference:
+        digest = image_reference[image_reference.index("@")+1:]
+        # "Docker references with both a tag and digest are currently not supported"
+        if image_reference.index(":") < image_reference.index("@"):
+            image_reference = image_reference[:image_reference.index("@")]
+    else:
+        digest = resolve_image(image_reference)
+
+    debug(f"Resolved image {image_reference} to {digest}")
     image = {
         "registry": image_reference.split("/")[0],
         "digest": digest
     }
-    if "@" in image:
+    if "@" in image_reference:
         image["image"] = image_reference[image_reference.index("/")+1:image_reference.index("@")]
     else:
         image["image"] = image_reference[image_reference.index("/")+1:image_reference.index(":")]
