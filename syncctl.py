@@ -179,21 +179,31 @@ def resolve_image(image: str) -> str:
 
     return json.loads(p.stdout)["Digest"]
 
+def process_image(image_reference: str) -> dict:
+    debug(f"Processing image: {image_reference}")
+    digest = resolve_image(image_reference)
+    debug(f"Image {image_reference} resolved to {digest}")
+    image = {
+        "registry": image_reference.split("/")[0],
+        "digest": digest
+    }
+    if "@" in image:
+        image["image"] = image_reference[image_reference.index("/")+1:image_reference.index("@")]
+    else:
+        image["image"] = image_reference[image_reference.index("/")+1:image_reference.index(":")]
+        image["tag"] = image_reference[image_reference.index(":")+1:]
+    return image
+
 def resolve_images(c: dict, manifest: dict) -> None:
     images = {}
+    if "extra_images" in c:
+        for image in c["extra_images"]:
+            if image not in images:
+                images[image] = process_image(image)
     for m in template_charts(c["api_versions"], c["skip_charts"], c["values"]):
         for image in extract_images(m):
             if image not in images:
-                digest = resolve_image(image)
-                images[image] = {
-                    "registry": image.split("/")[0],
-                    "digest": digest
-                }
-                if "@" in image:
-                     images[image]["image"] = image[image.index("/")+1:image.index("@")]
-                else:
-                     images[image]["image"] = image[image.index("/")+1:image.index(":")]
-                     images[image]["tag"] = image[image.index(":")+1:]
+                images[image] = process_image(image)
     manifest["images"] = list(images.values())
     save_manifest(manifest)
 
