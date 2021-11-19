@@ -11,6 +11,7 @@ from pathlib import Path
 from argparse import ArgumentParser
 from logging import basicConfig
 from logging import DEBUG
+from logging import debug
 from typing import Generator
 
 parser = ArgumentParser()
@@ -55,15 +56,19 @@ def download_file(url: str, dest: str, hash: str) -> None:
 
 def mirror_helm(c: dict) -> None:
     if not Path("work/helm-git-repo").is_dir():
+        debug(f"Cloning Helm git repository: {c['repository']}")
         repo = git.Repo.clone_from(c["repository"], "work/helm-git-repo")
     else:
         repo = git.Repo('work/helm-git-repo')
     if repo.head.object.hexsha != c["commit"]:
+        debug(f"Helm git repository out-of-date. Got {repo.head.object.hexsha}, expected {c['commit']}")
         if Path('work/helm-chart-repo').is_dir():
             shutil.rmtree("work/helm-chart-repo")
         repo.remotes.origin.fetch()
         repo.head.reference = c["commit"]
         repo.head.reset(index=True, working_tree=True)
+    else:
+        debug(f"Helm git repository is up-to-date")
 
     if Path("work/helm-chart-repo.tmp").is_dir():
         shutil.rmtree("work/helm-chart-repo.tmp")
@@ -78,6 +83,7 @@ def mirror_helm(c: dict) -> None:
     f.close()
     for k, v in index["entries"].items():
         for c in v:
+            debug(f"Mirroring chart: {c}")
             url = c["urls"][0]
             # edit the index in place to set a relative url
             c["urls"][0] = os.path.basename(url)
@@ -92,9 +98,11 @@ def mirror_image(image: str) -> None:
     if Path(f'work/images.tmp/{image}').is_dir():
         return
     if Path(f'work/images/{image}').is_dir():
+        debug(f"Reusing existing image: {image}")
         Path(f"work/images.tmp/{image[0:image.rindex('/')]}").mkdir(parents=True, exist_ok=True)
         shutil.copytree(f'work/images/{image}', f'work/images.tmp/{image}')
         return
+    debug(f"Pulling image: {image}")
     p = subprocess.run(["skopeo", "sync", "--all", "--scoped", "--src", "docker", "--dest", "dir", image, "work/images.tmp"], capture_output=True)
     if p.returncode != 0:
         raise Exception(f'Error syncing image: {image}, error: {p.stderr}')
@@ -130,7 +138,9 @@ def template_charts(api_versions: list[str], skip_charts: list[str], values: dic
         base_args += [f'--set={k}={v}']
     for chart in list(Path('.').glob("work/helm-chart-repo/*.tgz")):
         if chart.name in skip_charts:
+            debug(f"Skipping chart: {chart.name}")
             continue
+        debug(f"Templating chart: {chart.name}")
         p = subprocess.run(base_args + [chart], capture_output=True)
         if p.returncode != 0:
             if not "library charts are not installable" in str(p.stderr):
