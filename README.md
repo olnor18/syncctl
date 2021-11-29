@@ -2,6 +2,11 @@
 
 `syncctl` is a tool for packaging all the artifacts for running [Yggdrasil](https://github.com/distributed-technologies/yggdrasil) in a air-gapped environment.
 
+`syncctl` requires:
+* Python 3.9
+* [Requests](https://pypi.org/project/requests/)
+* [GitPython](https://pypi.org/project/GitPython/)
+
 ## Manifest file
 
 The manifest file describes which artifacts and how they should be packaged. It consists of 3 sections.
