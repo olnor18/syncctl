@@ -179,11 +179,22 @@ def extract_images(k8s_manifests: str) -> list[str]:
     return images
 
 def resolve_image(image: str) -> str:
-    p = subprocess.run(["skopeo", "inspect", f'docker://{image}'], capture_output=True)
+    p = subprocess.run(["skopeo", "inspect", "--raw", f'docker://{image}'], capture_output=True)
     if p.returncode != 0:
         raise Exception(f'Error inspecting image: {image}, error: {p.stderr}')
 
-    return json.loads(p.stdout)["Digest"]
+    manifest = json.loads(p.stdout)
+    # https://github.com/opencontainers/image-spec/blob/43a7dee1ec31e0ad091d2dc93f6ada1392fba587/image-index.md
+    if (manifest["mediaType"] == "application/vnd.docker.distribution.manifest.list.v2+json" or
+        manifest["mediaType"] == "application/vnd.oci.image.index.v1+json"):
+        debug(f"Found images index for: {image}")
+        for m in manifest["manifests"]:
+            if (m["platform"]["architecture"] == "amd64" and
+                m["platform"]["os"] == "linux"):
+                return m["digest"]
+        raise Exception(f'Error finding amd64 image: {image}')
+    else:
+        return f"sha256:{hashlib.sha256(p.stdout).hexdigest()}"
 
 def process_image(image_reference: str) -> dict:
     debug(f"Processing image: {image_reference}")
