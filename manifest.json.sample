@@ -1,0 +1,324 @@
+{
+    "helm_repository": {
+        "api_versions": [
+            "networking.k8s.io/v1/IngressClass"
+        ],
+        "commit": "2cc33ca4f4883fe6f5c942432b9f178c553e0033",
+        "repository": "https://github.com/distributed-technologies/helm-charts.git",
+        "skip_charts": [
+            "nidhogg-v0.5.0.tgz",
+            "nidhogg-v0.5.1.tgz",
+            "nidhogg-v1.0.2-rc-10.tgz",
+            "nidhogg-v1.0.2-rc-11.tgz",
+            "loadbalancer-0.1.6.tgz"
+        ],
+        "values": {
+            "config.externalProxy": "127.0.0.1:80"
+        }
+    },
+    "images": [
+        {
+            "digest": "sha256:2e0e725c9282bfb7b08bea7dbbfd8dbce6410d670e3f8addd9b6540d818ad520",
+            "image": "argoproj/argocd",
+            "registry": "quay.io",
+            "tag": "v2.1.2"
+        },
+        {
+            "digest": "sha256:63fc6ee14bcf1868ebfba90885aec76597e0f27bc8e89d1fd238b1f2ee3dea6e",
+            "image": "dexidp/dex",
+            "registry": "ghcr.io",
+            "tag": "v2.30.0"
+        },
+        {
+            "digest": "sha256:0039796b887fd30e460353f14e46ba1004152aa97f5f59094cc21eac445fc89b",
+            "image": "library/redis",
+            "registry": "docker.io",
+            "tag": "6.2.4-alpine"
+        },
+        {
+            "digest": "sha256:07881f2eda37650e84350965f78014462fea9a782b32bd2ba41817d0457b24d7",
+            "image": "argoproj/eventbus-controller",
+            "registry": "quay.io",
+            "tag": "v1.3.1"
+        },
+        {
+            "digest": "sha256:1c6db8aa002885941b1253855e0d0543c42517ea62b59cfa845f28613afd4323",
+            "image": "argoproj/eventsource-controller",
+            "registry": "quay.io",
+            "tag": "v1.3.1"
+        },
+        {
+            "digest": "sha256:8ba57f5865326956f92f519818a2f470d250cfdcc9ac003fcf63e9340f131268",
+            "image": "argoproj/sensor-controller",
+            "registry": "quay.io",
+            "tag": "v1.3.1"
+        },
+        {
+            "digest": "sha256:017f1ee3fc0ddfb92b9175a52817103f792f7a8a82f01e54c1540a7d97469cd3",
+            "image": "argoproj/argocli",
+            "registry": "docker.io",
+            "tag": "v2.12.5"
+        },
+        {
+            "digest": "sha256:e755ca3a31f810bdc4d92d738601e5b791a310ada02ce86db82ef56407d0ade4",
+            "image": "argoproj/workflow-controller",
+            "registry": "docker.io",
+            "tag": "v2.12.5"
+        },
+        {
+            "digest": "sha256:169211e20e2f2d5d115674681eb79d21a217b296b43374b8e39f97fcf866b375",
+            "image": "library/registry",
+            "registry": "docker.io",
+            "tag": "2.7.1"
+        },
+        {
+            "digest": "sha256:43a9f52f5dce39bf1816afe6141724cc2d08811e466dd46e6628c925e2419bdc",
+            "image": "coredns/coredns",
+            "registry": "docker.io",
+            "tag": "1.8.5"
+        },
+        {
+            "digest": "sha256:6ff52ff9299052a1454df88f6a46adefedac67dd7350cfaf510b9f1fdd1dafab",
+            "image": "library/nginx",
+            "registry": "docker.io",
+            "tag": "1.21.4"
+        },
+        {
+            "digest": "sha256:4a57831080effa295ceb32a90c326bf1ca11e30489e9b94061bd48dbc41aa06a",
+            "image": "distributed-technologies/helm-charts/git-server",
+            "registry": "ghcr.io",
+            "tag": "0.2.2"
+        },
+        {
+            "digest": "sha256:db98a19c5874131bc6b7c923748943a16bd9771ab7006d04d1809b5b6b6f590b",
+            "image": "distributed-technologies/services-git-server",
+            "registry": "ghcr.io",
+            "tag": "feature-git-server"
+        },
+        {
+            "digest": "sha256:b3ec90dcb532054144a039760a71311b60b17db22b4711541eb72b08d583c52e",
+            "image": "grafana/grafana",
+            "registry": "docker.io",
+            "tag": "8.2.1"
+        },
+        {
+            "digest": "sha256:b481e99e46fb3cdc1b652c080dcedb12a80a45331214a02c5ea0444821d440ec",
+            "image": "library/haproxy",
+            "registry": "docker.io",
+            "tag": "2.1.4"
+        },
+        {
+            "digest": "sha256:121746d9adc36c3e4435d165a3799e1cc55a6ee82b30a482723ab76024cf7a1f",
+            "image": "goharbor/chartmuseum-photon",
+            "registry": "docker.io",
+            "tag": "v2.2.1"
+        },
+        {
+            "digest": "sha256:d8813789bd9a9dfc9bc8c439396a752a9753275b7130aad82a7e8b6cc95f5693",
+            "image": "goharbor/harbor-core",
+            "registry": "docker.io",
+            "tag": "v2.2.1"
+        },
+        {
+            "digest": "sha256:8b617874fe5ac569172a8cb271763dd24333007bf5e040e6a3ae355ae23f7109",
+            "image": "goharbor/harbor-jobservice",
+            "registry": "docker.io",
+            "tag": "v2.2.1"
+        },
+        {
+            "digest": "sha256:1bea69d0664c76d1e8123593affbdfa23d833882eaf01d165ab3306e03766971",
+            "image": "goharbor/notary-server-photon",
+            "registry": "docker.io",
+            "tag": "v2.2.1"
+        },
+        {
+            "digest": "sha256:42cd8a38577be972ccb33150d815b5dc1b2abf0d3e164a2cfb60b1aef72907e1",
+            "image": "goharbor/notary-signer-photon",
+            "registry": "docker.io",
+            "tag": "v2.2.1"
+        },
+        {
+            "digest": "sha256:030b8285f5e3e5c1f5ee4e984111164ca0cd23f1ef892f81b4a2fd79584bfd9a",
+            "image": "goharbor/harbor-portal",
+            "registry": "docker.io",
+            "tag": "v2.2.1"
+        },
+        {
+            "digest": "sha256:0ac1c3543c49bd7e12b01ea8cfb120f83b9f2c94e7ce5a7d1afaabbbc92befae",
+            "image": "goharbor/registry-photon",
+            "registry": "docker.io",
+            "tag": "v2.2.1"
+        },
+        {
+            "digest": "sha256:32fc649e64459ce0db75f963b35d21bea680015a141edd1b6cf5bad4f8fb6ab9",
+            "image": "goharbor/harbor-registryctl",
+            "registry": "docker.io",
+            "tag": "v2.2.1"
+        },
+        {
+            "digest": "sha256:376337a33efe5beda56c8024937f3cc5a7eda51ac50ff4fffecac0e72f910fd1",
+            "image": "goharbor/harbor-db",
+            "registry": "docker.io",
+            "tag": "v2.2.1"
+        },
+        {
+            "digest": "sha256:d7b4900ab786946e9857d45133639880d88b6f06b39e2e522e0185873ec7c500",
+            "image": "goharbor/redis-photon",
+            "registry": "docker.io",
+            "tag": "v2.2.1"
+        },
+        {
+            "digest": "sha256:5e044e3282baeb99734ee4c4f6086c58a7b2e0c3b78dcc92f0a6ca0b68d9e626",
+            "image": "goharbor/trivy-adapter-photon",
+            "registry": "docker.io",
+            "tag": "v2.2.1"
+        },
+        {
+            "digest": "sha256:90d09c244069d1f46b451888f8570e43d9f023ef90aa808cd5a3b8c543c30d64",
+            "image": "jaegertracing/jaeger-agent",
+            "registry": "docker.io",
+            "tag": "1.22.0"
+        },
+        {
+            "digest": "sha256:77154fde84c15fb3416d972c07dca24aee0fa64a033dace16ac8734da6090d3c",
+            "image": "jaegertracing/jaeger-collector",
+            "registry": "docker.io",
+            "tag": "1.22.0"
+        },
+        {
+            "digest": "sha256:444e9fede9f8f306968d67e2f0f9c786bd9d44acdf51445f87773da6ff2ccdba",
+            "image": "jaegertracing/jaeger-query",
+            "registry": "docker.io",
+            "tag": "1.22.0"
+        },
+        {
+            "digest": "sha256:5aa8400b4b3b794b5eba85f79b75a9ed9326e41428ae3a9d6b91cd731f2cf768",
+            "image": "library/cassandra",
+            "registry": "docker.io",
+            "tag": "3.11.6"
+        },
+        {
+            "digest": "sha256:6f82e2b0464f50da8104acd7363fb9b995001ddff77d248379f8788e78946143",
+            "image": "solsson/kafka-prometheus-jmx-exporter",
+            "registry": "docker.io"
+        },
+        {
+            "digest": "sha256:ee403d5b909099cbc400f5b5b5773be8482ca890881a0207cbf9608e0c9f11bf",
+            "image": "confluentinc/cp-ksqldb-server",
+            "registry": "docker.io",
+            "tag": "6.1.0"
+        },
+        {
+            "digest": "sha256:b651d4b6185aa375628ce4001fe016ace66a7b8c17a294058caff5db8aabc181",
+            "image": "confluentinc/cp-schema-registry",
+            "registry": "docker.io",
+            "tag": "6.1.0"
+        },
+        {
+            "digest": "sha256:0e37f671e6d489c3e56ffb8f51f19a2a014b2cb3f57eafcc5e2931090932e725",
+            "image": "strimzi/operator",
+            "registry": "quay.io",
+            "tag": "0.22.1"
+        },
+        {
+            "digest": "sha256:ec6818b86d2d2451d082f21cef8a5244ef10e13d74dd6830616b2015c2768b45",
+            "image": "library/haproxy",
+            "registry": "docker.io",
+            "tag": "2.4.8-alpine"
+        },
+        {
+            "digest": "sha256:9dcee8fcf4028d141d0fdfd4e13782a94d2f126344a472afbd111f45c73b3780",
+            "image": "metallb/speaker",
+            "registry": "quay.io",
+            "tag": "main"
+        },
+        {
+            "digest": "sha256:cabb862c80ad2f8969dcbe62ad0f935b5b65e8a3c0b3fa0e016c3b3d78587031",
+            "image": "metallb/controller",
+            "registry": "quay.io",
+            "tag": "main"
+        },
+        {
+            "digest": "sha256:4443d937395b25fa6591ade8ed06dae4f520bfe4d281b5686369b704be81b571",
+            "image": "grafana/promtail",
+            "registry": "docker.io",
+            "tag": "2.1.0"
+        },
+        {
+            "digest": "sha256:b393f409fa9ada5327e7fb5ec8ac90300ae498560417f08fec2f10e14a89aa7c",
+            "image": "grafana/loki",
+            "registry": "docker.io",
+            "tag": "2.1.0"
+        },
+        {
+            "digest": "sha256:cd4b3d4d27ae5931dc96b9632188590b7a6880469bcf07f478a3280dd0955336",
+            "image": "library/haproxy",
+            "registry": "docker.io",
+            "tag": "2.0.4"
+        },
+        {
+            "digest": "sha256:f3f51453e4261734f08579fe9c812c66ee443626690091401674be4fb724da70",
+            "image": "oliver006/redis_exporter",
+            "registry": "docker.io",
+            "tag": "v1.15.1"
+        },
+        {
+            "digest": "sha256:04b0b5c51c2556f7c021348fc7c7f7bc62c15041f3dd126be405d8dc4de06673",
+            "image": "distributed-technologies/services-ntp",
+            "registry": "ghcr.io",
+            "tag": "main"
+        },
+        {
+            "digest": "sha256:a990408ed288669bbad5b5b374fe1584e54825cde4a911c1a3d6301a907a030c",
+            "image": "prometheus/node-exporter",
+            "registry": "quay.io",
+            "tag": "v1.2.2"
+        },
+        {
+            "digest": "sha256:0ccff0db0a342d264c8f4fe5a0841d727fbb8e6cc0c7e741441771f165262182",
+            "image": "kube-state-metrics/kube-state-metrics",
+            "registry": "k8s.gcr.io",
+            "tag": "v2.2.0"
+        },
+        {
+            "digest": "sha256:ab4f480f2cc65e98f1b4dfb93eb3a41410036359c238fdd60bb3f59deca8d522",
+            "image": "prometheus-operator/prometheus-operator",
+            "registry": "quay.io",
+            "tag": "v0.50.0"
+        },
+        {
+            "digest": "sha256:2759f4e7e212d52a5d067a2574bd6884e190f8843936aaf1bc4c3557d15dba44",
+            "image": "rook/ceph",
+            "registry": "docker.io",
+            "tag": "v1.7.2"
+        },
+        {
+            "digest": "sha256:5909afc7d89b9c4e4cfdc3cd26471e952d3929b74217662182717fd67a9cc0d1",
+            "image": "bitnami/thanos",
+            "registry": "docker.io",
+            "tag": "0.23.1-scratch-r1"
+        },
+        {
+            "digest": "sha256:42363bb1461f3fd1d1742c484fee4f73e4527cdc2757b7e212d511b946333b2c",
+            "image": "library/traefik",
+            "registry": "docker.io",
+            "tag": "v2.4.7"
+        },
+        {
+            "digest": "sha256:53fcccd3b29ef22e4ffa9de1b2662e21310623819a2b92a5a5dbc4bca7d8586e",
+            "image": "hashicorp/vault-k8s",
+            "registry": "docker.io",
+            "tag": "0.10.2"
+        },
+        {
+            "digest": "sha256:55d8cb0a995c0e4a4426b9f00c8944583700edb35917d2d950ed9b2379e61830",
+            "image": "library/vault",
+            "registry": "docker.io",
+            "tag": "1.7.3"
+        }
+    ],
+    "yggdrasil_repository": {
+        "commit": "00d6a62598bc7833bde3e067043fe842bbbccbbf",
+        "repository": "https://github.com/distributed-technologies/yggdrasil.git"
+    }
+}
