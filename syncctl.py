@@ -33,6 +33,8 @@ ci_parser = subcommands.add_parser(
     "mirror-images",
     help="mirror the container images to the local fs",
 )
+ci_parser.add_argument('-i', "--incremental", action='store_true',
+                       help='Only mirror images that haven\'t been mirrored in a previous run with -i')
 ci_parser = subcommands.add_parser(
     "resolve-images",
     help="resolve container images to digest and update the manifest file",
@@ -132,14 +134,19 @@ def mirror_image(image: str) -> None:
     if p.returncode != 0:
         raise Exception(f'Error syncing image: {image}, error: {p.stderr}')
 
-def mirror_images(c: dict) -> None:
+def mirror_images(manifest: dict, incremental: bool) -> None:
     os.makedirs("work/images", exist_ok=True)
     if Path('work/images.tmp').is_dir():
         shutil.rmtree("work/images.tmp")
     os.makedirs("work/images.tmp")
 
     digest_tag_mapping = {}
-    for image in c:
+    images = manifest["images"]
+    for i, image in enumerate(images):
+        if incremental and "skip" in image and image["skip"]:
+            continue
+        elif incremental:
+            c[i]["skip"] = True
         image_name_digest = f'{image["registry"]}/{image["image"]}@{image["digest"]}'
         if "tag" in image:
             image_name_tag = f'{image["registry"]}/{image["image"]}:{image["tag"]}'
@@ -153,6 +160,7 @@ def mirror_images(c: dict) -> None:
     if Path('work/images').is_dir():
         shutil.rmtree("work/images")
     os.rename("work/images.tmp", "work/images")
+    save_manifest(manifest)
 
 def template_charts(api_versions: list[str], values: dict[str, str]) -> Generator[int, None, None]:
     manifests = []
@@ -244,7 +252,16 @@ def resolve_images(c: dict, manifest: dict) -> None:
         for image in extract_images(m):
             if image not in images:
                 images[image] = process_image(image)
-    manifest["images"] = list(images.values())
+    images = list(images.values())
+    for image in manifest["images"]:
+        # FIXME: This isn't scalable
+        if "skip" in image and image["skip"]:
+            image.pop('skip')
+            for new_image in images:
+                if image == new_image:
+                    new_image["skip"] = True
+                    break
+    manifest["images"] = images
     save_manifest(manifest)
 
 def tar() -> None:
@@ -278,7 +295,7 @@ def main() -> None:
     elif "mirror-charts" == args.subcommand:
         mirror_charts(manifest)
     elif "mirror-images" == args.subcommand:
-        mirror_images(manifest["images"])
+        mirror_images(manifest, args.incremental)
     elif "resolve-images" == args.subcommand:
         resolve_images(manifest["helm"], manifest)
     elif "tar" == args.subcommand:
