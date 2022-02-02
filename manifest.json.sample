@@ -1,4 +1,26 @@
 {
+    "charts": [
+        {
+            "chart": "nidhogg",
+            "digest": "af4901f2568b7ab123fafcd76ac4d6a99337e8f1be5dca24bf4fcd1280a054a4",
+            "version": "1.0.16"
+        },
+        {
+            "chart": "lightvessel",
+            "digest": "cbd24f12e42743ea0dee82c546e570b29d3fcccc2ee14709cf05730afcec25fc",
+            "version": "2.0.3"
+        },
+        {
+            "chart": "rook",
+            "digest": "0d9c16a988d6e0dfd6d4b02173d6334e61c122d1825c4f1467253b418a93f1c9",
+            "version": "0.1.3"
+        },
+        {
+            "chart": "rook-ceph-cluster",
+            "digest": "3f79af13669560572aeec4ad647440e70aab817a598753e47365fd0e7cb77ec2",
+            "version": "0.1.6"
+        }
+    ],
     "helm": {
         "api_versions": [],
         "values": {}

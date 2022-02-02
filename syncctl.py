@@ -59,7 +59,7 @@ def download_file(url: str, dest: str, hash: str = None) -> None:
         with open(dest, 'wb') as f:
             f.write(r.content)
 
-def download_chart(name: str, version: str, repository: str):
+def download_chart(name: str, version: str, repository: str) -> dict:
     with requests.get(f'{repository}/index.yaml') as r:
         r.raise_for_status()
         document = yaml.load(r.content, Loader=yaml.SafeLoader)
@@ -68,7 +68,7 @@ def download_chart(name: str, version: str, repository: str):
                 url = chart["urls"][0]
                 debug(f"Downloading chart: {name}:{version}")
                 download_file(url, f"work/helm-chart-repo.tmp/{os.path.basename(url)}", chart["digest"])
-                return
+                return {"chart": chart['name'], "version": chart['version'], "digest": chart["digest"]}
     raise Exception(f'Chart: {name}:{version} not found in {repository}')
 
 def download_dependencies(chart: str) -> list[str]:
@@ -76,19 +76,20 @@ def download_dependencies(chart: str) -> list[str]:
     f = open(f"work/yggdrasil/{chart}/Chart.yaml")
     index = yaml.load(f.read(), Loader=yaml.SafeLoader)
     for chart in index["dependencies"]:
-        dependencies.append(f"{chart['name']}-{chart['version']}.tgz")
-        download_chart(chart["name"], chart["version"], chart["repository"])
+        dependencies.append(download_chart(chart["name"], chart["version"], chart["repository"]))
     return dependencies
 
-def mirror_charts() -> None:
+def mirror_charts(manifest: dict) -> None:
     for dir in ["work/helm-chart-repo.tmp", "work/yggdrasil/yggdrasil/charts"]:
         if Path(dir).is_dir():
             shutil.rmtree(dir)
         os.makedirs(dir)
 
-    download_dependencies("nidhogg")
+    charts = []
+    charts.extend(download_dependencies("nidhogg"))
     for dependency in download_dependencies("yggdrasil"):
-        shutil.copyfile(f"work/helm-chart-repo.tmp/{dependency}", f"work/yggdrasil/yggdrasil/charts/{dependency}")
+        charts.append(dependency)
+        shutil.copyfile(f"work/helm-chart-repo.tmp/{dependency['chart']}-{dependency['version']}.tgz", f"work/yggdrasil/yggdrasil/charts/{dependency['chart']}-{dependency['version']}.tgz")
 
     p = subprocess.run(["helm", "template", "work/yggdrasil/yggdrasil"], capture_output=True)
     if p.returncode != 0:
@@ -97,7 +98,8 @@ def mirror_charts() -> None:
     for document in documents:
         if document["apiVersion"] == "argoproj.io/v1alpha1" and document["kind"] == "Application" and 'chart' in document["spec"]["source"]:
             source = document["spec"]["source"]
-            download_chart(source["chart"], source["targetRevision"], source["repoURL"])
+            chart = download_chart(source["chart"], source["targetRevision"], source["repoURL"])
+            charts.append(chart)
 
     p = subprocess.run(["helm", "repo", "index", "work/helm-chart-repo.tmp"], capture_output=True)
     if p.returncode != 0:
@@ -106,6 +108,16 @@ def mirror_charts() -> None:
     if Path('work/helm-chart-repo').is_dir():
         shutil.rmtree("work/helm-chart-repo")
     os.rename("work/helm-chart-repo.tmp", "work/helm-chart-repo")
+
+    for new_chart in charts:
+        # FIXME: This isn't scalable
+        for chart in manifest["charts"]:
+            if new_chart["chart"] == chart["chart"] and new_chart["version"] == chart["version"]:
+                if new_chart["digest"] != chart["digest"]:
+                    raise Exception(f"Digest mismatch for chart: {new_chart['chart']}:{new_chart['version']}, got: {new_chart['digest']}, expected: {chart['digest']}")
+                break
+    manifest["charts"] = charts
+    save_manifest(manifest)
 
 def mirror_image(image: str) -> None:
     if Path(f'work/images.tmp/{image}').is_dir():
@@ -264,7 +276,7 @@ def main() -> None:
     if "mirror-yggdrasil" == args.subcommand:
         mirror_yggdrasil(manifest["yggdrasil_repository"])
     elif "mirror-charts" == args.subcommand:
-        mirror_charts()
+        mirror_charts(manifest)
     elif "mirror-images" == args.subcommand:
         mirror_images(manifest["images"])
     elif "resolve-images" == args.subcommand:
