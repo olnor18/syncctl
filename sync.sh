@@ -35,10 +35,7 @@ sync_helm() {
   pvc="helm-registry-data-pvc"
   vol_name="$(kubectl -n ${namespace} get pvc ${pvc} -o jsonpath="{.spec.volumeName}")"
 
-  pvc_location="$(compgen -G "/var/lib/docker/volumes/*/_data/local-path-provisioner/${vol_name}_${namespace}_${pvc}")"
-  helm_repo_location="distributed-technologies.github.io/helm-charts"
-  helm_repo_data_dir="${pvc_location}/${helm_repo_location}"
-  mkdir -p "${helm_repo_data_dir}"
+  helm_repo_data_dir="$(compgen -G "/var/lib/docker/volumes/*/_data/local-path-provisioner/${vol_name}_${namespace}_${pvc}")"
 
   echo "Synching the helm charts repo to the helm-server pvc"
   rsync -v -aP --delete helm-chart-repo/ "$helm_repo_data_dir"

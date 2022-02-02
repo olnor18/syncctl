@@ -26,8 +26,8 @@ ci_parser = subcommands.add_parser(
     help="mirror the yggdrasil git repository to the local fs",
 )
 ci_parser = subcommands.add_parser(
-    "mirror-helm",
-    help="mirror the helm git repository to the local fs and download all charts",
+    "mirror-charts",
+    help="mirror the charts to the local fs",
 )
 ci_parser = subcommands.add_parser(
     "mirror-images",
@@ -44,60 +44,67 @@ ci_parser = subcommands.add_parser(
 
 def mirror_yggdrasil(c: dict) -> None:
     if not Path("work/yggdrasil").is_dir():
-        repo = git.Repo.clone_from(c["repository"], "work/yggdrasil", multi_options=["--bare"])
+        repo = git.Repo.clone_from(c["repository"], "work/yggdrasil")
     else:
         repo = git.Repo('work/yggdrasil')
     if repo.head.object.hexsha != c["commit"]:
-        ref = git.SymbolicReference.from_path(repo, "HEAD").ref.path
         repo.git.fetch()
-        repo.git.update_ref(ref, c["commit"])
+        repo.git.reset('--hard', c["commit"])
 
-def download_file(url: str, dest: str, hash: str) -> None:
+def download_file(url: str, dest: str, hash: str = None) -> None:
     with requests.get(url) as r:
         r.raise_for_status()
-        if hashlib.sha256(r.content).hexdigest() != hash:
+        if hash is not None and hashlib.sha256(r.content).hexdigest() != hash:
             raise Exception("Hash mismatch")
         with open(dest, 'wb') as f:
             f.write(r.content)
 
-def mirror_helm(c: dict) -> None:
-    if not Path("work/helm-git-repo").is_dir():
-        debug(f"Cloning Helm git repository: {c['repository']}")
-        repo = git.Repo.clone_from(c["repository"], "work/helm-git-repo")
-    else:
-        repo = git.Repo('work/helm-git-repo')
-    if repo.head.object.hexsha != c["commit"]:
-        debug(f"Helm git repository out-of-date. Got {repo.head.object.hexsha}, expected {c['commit']}")
-        if Path('work/helm-chart-repo').is_dir():
-            shutil.rmtree("work/helm-chart-repo")
-        repo.remotes.origin.fetch()
-        repo.head.reference = c["commit"]
-        repo.head.reset(index=True, working_tree=True)
-    else:
-        debug(f"Helm git repository is up-to-date")
+def download_chart(name: str, version: str, repository: str):
+    with requests.get(f'{repository}/index.yaml') as r:
+        r.raise_for_status()
+        document = yaml.load(r.content, Loader=yaml.SafeLoader)
+        for chart in document["entries"][name]:
+            if chart["version"] == version:
+                url = chart["urls"][0]
+                debug(f"Downloading chart: {name}:{version}")
+                download_file(url, f"work/helm-chart-repo.tmp/{os.path.basename(url)}", chart["digest"])
+                return
+    raise Exception(f'Chart: {name}:{version} not found in {repository}')
 
-    if Path("work/helm-chart-repo.tmp").is_dir():
-        shutil.rmtree("work/helm-chart-repo.tmp")
-
-    if Path("work/helm-chart-repo").is_dir():
-        return
-
-    os.makedirs("work/helm-chart-repo.tmp")
-
-    f = open("work/helm-git-repo/index.yaml")
+def download_dependencies(chart: str) -> list[str]:
+    dependencies = []
+    f = open(f"work/yggdrasil/{chart}/Chart.yaml")
     index = yaml.load(f.read(), Loader=yaml.SafeLoader)
-    f.close()
-    for k, v in index["entries"].items():
-        for c in v:
-            debug(f"Mirroring chart: {c}")
-            url = c["urls"][0]
-            # edit the index in place to set a relative url
-            c["urls"][0] = os.path.basename(url)
-            file = "work/helm-chart-repo.tmp/" + os.path.basename(url)
-            hash = c["digest"]
-            download_file(url, file, hash)
-    with open("work/helm-chart-repo.tmp/index.yaml", "w") as f:
-        yaml.dump(index, f)
+    for chart in index["dependencies"]:
+        dependencies.append(f"{chart['name']}-{chart['version']}.tgz")
+        download_chart(chart["name"], chart["version"], chart["repository"])
+    return dependencies
+
+def mirror_charts() -> None:
+    for dir in ["work/helm-chart-repo.tmp", "work/yggdrasil/yggdrasil/charts"]:
+        if Path(dir).is_dir():
+            shutil.rmtree(dir)
+        os.makedirs(dir)
+
+    download_dependencies("nidhogg")
+    for dependency in download_dependencies("yggdrasil"):
+        shutil.copyfile(f"work/helm-chart-repo.tmp/{dependency}", f"work/yggdrasil/yggdrasil/charts/{dependency}")
+
+    p = subprocess.run(["helm", "template", "work/yggdrasil/yggdrasil"], capture_output=True)
+    if p.returncode != 0:
+        raise Exception(f'Error templating yggdrasil, error: {p.stderr}')
+    documents = yaml.load_all(p.stdout, Loader=yaml.SafeLoader)
+    for document in documents:
+        if document["apiVersion"] == "argoproj.io/v1alpha1" and document["kind"] == "Application" and 'chart' in document["spec"]["source"]:
+            source = document["spec"]["source"]
+            download_chart(source["chart"], source["targetRevision"], source["repoURL"])
+
+    p = subprocess.run(["helm", "repo", "index", "work/helm-chart-repo.tmp"], capture_output=True)
+    if p.returncode != 0:
+        raise Exception(f'Error generating chart repository index, error: {p.stderr}')
+
+    if Path('work/helm-chart-repo').is_dir():
+        shutil.rmtree("work/helm-chart-repo")
     os.rename("work/helm-chart-repo.tmp", "work/helm-chart-repo")
 
 def mirror_image(image: str) -> None:
@@ -135,7 +142,7 @@ def mirror_images(c: dict) -> None:
         shutil.rmtree("work/images")
     os.rename("work/images.tmp", "work/images")
 
-def template_charts(api_versions: list[str], skip_charts: list[str], values: dict[str, str]) -> Generator[int, None, None]:
+def template_charts(api_versions: list[str], values: dict[str, str]) -> Generator[int, None, None]:
     manifests = []
     base_args = ["helm", "template"]
     for api_version in api_versions:
@@ -143,9 +150,6 @@ def template_charts(api_versions: list[str], skip_charts: list[str], values: dic
     for k, v in values.items():
         base_args += [f'--set={k}={v}']
     for chart in list(Path('.').glob("work/helm-chart-repo/*.tgz")):
-        if chart.name in skip_charts:
-            debug(f"Skipping chart: {chart.name}")
-            continue
         debug(f"Templating chart: {chart.name}")
         p = subprocess.run(base_args + [chart], capture_output=True)
         if p.returncode != 0:
@@ -224,7 +228,7 @@ def resolve_images(c: dict, manifest: dict) -> None:
         for image in c["extra_images"]:
             if image not in images:
                 images[image] = process_image(image)
-    for m in template_charts(c["api_versions"], c["skip_charts"], c["values"]):
+    for m in template_charts(c["api_versions"], c["values"]):
         for image in extract_images(m):
             if image not in images:
                 images[image] = process_image(image)
@@ -259,12 +263,12 @@ def main() -> None:
 
     if "mirror-yggdrasil" == args.subcommand:
         mirror_yggdrasil(manifest["yggdrasil_repository"])
-    elif "mirror-helm" == args.subcommand:
-        mirror_helm(manifest["helm_repository"])
+    elif "mirror-charts" == args.subcommand:
+        mirror_charts()
     elif "mirror-images" == args.subcommand:
         mirror_images(manifest["images"])
     elif "resolve-images" == args.subcommand:
-        resolve_images(manifest["helm_repository"], manifest)
+        resolve_images(manifest["helm"], manifest)
     elif "tar" == args.subcommand:
         tar()
     else:
