@@ -95,7 +95,7 @@ def mirror_charts(manifest: dict) -> None:
         charts.append(dependency)
         shutil.copyfile(f"work/helm-chart-repo.tmp/{dependency['chart']}-{dependency['version']}.tgz", f"work/yggdrasil/yggdrasil/charts/{dependency['chart']}-{dependency['version']}.tgz")
 
-    p = subprocess.run(["helm", "template", "work/yggdrasil/yggdrasil"], capture_output=True)
+    p = subprocess.run(["helm", "template", "--set=loadbalancer.ipRangeStart=127.0.0.1", "work/yggdrasil/yggdrasil"], capture_output=True)
     if p.returncode != 0:
         raise Exception(f'Error templating yggdrasil, error: {p.stderr}')
     documents = yaml.load_all(p.stdout, Loader=yaml.SafeLoader)
