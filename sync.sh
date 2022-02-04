@@ -2,7 +2,7 @@
 set -o nounset -o errexit
 
 sync_image() {
-  skopeo sync --all --dest-tls-verify=false --src dir --dest docker "images/${1}/${2}" "localhost:5000/${1}/${3%/*}/"
+  skopeo sync --all --dest-tls-verify=false --src dir --dest docker "images/${1}/${2}" "localhost:5000/${1}/${3}"
 }
 
 tag_image() {
@@ -20,7 +20,11 @@ sync_images() {
     digest="${digest#$host/}"
     tag="$(awk '{print $2}' <<< "${line}")"
     tag="${tag#$host/}"
-    sync_image "${host}" "${digest}" "${digest}"
+    if [[ "$digest" == */* ]]; then
+      sync_image "${host}" "${digest}" "${digest%/*}/"
+    else
+      sync_image "${host}" "${digest}" ""
+    fi
     if [ "${tag}" != "null" ]; then
       tag_image "${host}" "${digest}" "${tag}"
     fi
