@@ -44,14 +44,14 @@ ci_parser = subcommands.add_parser(
     help="create a tarball",
 )
 
-def mirror_yggdrasil(c: dict) -> None:
+def mirror_yggdrasil(yggdrasil_config: dict) -> None:
     if not Path("work/yggdrasil").is_dir():
-        repo = git.Repo.clone_from(c["repository"], "work/yggdrasil")
+        repo = git.Repo.clone_from(yggdrasil_config["repository"], "work/yggdrasil")
     else:
         repo = git.Repo('work/yggdrasil')
-    if repo.head.object.hexsha != c["commit"]:
+    if repo.head.object.hexsha != yggdrasil_config["commit"]:
         repo.git.fetch()
-        repo.git.reset('--hard', c["commit"])
+        repo.git.reset('--hard', yggdrasil_config["commit"])
 
 def download_file(url: str, dest: str, hash: str = None) -> None:
     with requests.get(url) as r:
@@ -148,7 +148,7 @@ def mirror_images(manifest: dict, incremental: bool) -> None:
         if incremental and "skip" in image and image["skip"]:
             continue
         elif incremental:
-            c[i]["skip"] = True
+            images[i]["skip"] = True
         image_name_digest = f'{image["registry"]}/{image["image"]}@{image["digest"]}'
         if "tag" in image:
             image_name_tag = f'{image["registry"]}/{image["image"]}:{image["tag"]}'
@@ -244,13 +244,13 @@ def process_image(image_reference: str) -> dict:
         image["tag"] = image_reference[image_reference.index(":")+1:]
     return image
 
-def resolve_images(c: dict, manifest: dict) -> None:
+def resolve_images(helm_config: dict, manifest: dict) -> None:
     images = {}
-    if "extra_images" in c:
-        for image in c["extra_images"]:
+    if "extra_images" in helm_config:
+        for image in helm_config["extra_images"]:
             if image not in images:
                 images[image] = process_image(image)
-    for m in template_charts(c["api_versions"], c["values"]):
+    for m in template_charts(helm_config["api_versions"], helm_config["values"]):
         for image in extract_images(m):
             if image not in images:
                 images[image] = process_image(image)
