@@ -244,7 +244,8 @@ def process_image(image_reference: str) -> dict:
         image["tag"] = image_reference[image_reference.index(":")+1:]
     return image
 
-def resolve_images(helm_config: dict, manifest: dict) -> None:
+def resolve_images(manifest: dict) -> None:
+    helm_config = manifest["helm"]
     images = {}
     if "extra_images" in helm_config:
         for image in helm_config["extra_images"]:
@@ -299,7 +300,7 @@ def main() -> None:
     elif "mirror-images" == args.subcommand:
         mirror_images(manifest, args.incremental)
     elif "resolve-images" == args.subcommand:
-        resolve_images(manifest["helm"], manifest)
+        resolve_images(manifest)
     elif "tar" == args.subcommand:
         tar()
     else:
