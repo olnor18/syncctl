@@ -87,6 +87,8 @@ def download_dependencies(chart: str) -> list[str]:
     return dependencies
 
 def mirror_charts(manifest: dict, manifest_file: str) -> None:
+    if not Path("work/yggdrasil").is_dir():
+        raise Exception('Please run mirror-yggdrasil before mirror-charts')
     for dir in ["work/helm-chart-repo.tmp", "work/yggdrasil/yggdrasil/charts"]:
         if Path(dir).is_dir():
             shutil.rmtree(dir)
@@ -146,6 +148,8 @@ def mirror_images(manifest: dict, manifest_file: str, incremental: bool) -> None
     os.makedirs("work/images.tmp")
 
     digest_tag_mapping = {}
+    if 'images' not in manifest:
+        raise Exception('Please run run resolve-images before mirror-images')
     images = manifest["images"]
     for i, image in enumerate(images):
         if incremental and "skip" in image and image["skip"]:
@@ -248,6 +252,9 @@ def process_image(image_reference: str) -> dict:
     return image
 
 def resolve_images(manifest: dict, manifest_file: str) -> None:
+    if not Path("work/helm-chart-repo").is_dir():
+        raise Exception('Please run run mirror-charts before resolve-images')
+
     helm_config = manifest["helm"]
     images = {}
     if "extra_images" in helm_config:
