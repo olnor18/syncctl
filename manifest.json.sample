@@ -21,10 +21,6 @@
             "version": "0.1.6"
         }
     ],
-    "helm": {
-        "api_versions": [],
-        "values": {}
-    },
     "images": [
         {
             "digest": "sha256:0f4f3e1068268f0f5192797b003add304d9af5030b8ff341a7a716759d6102c7",

@@ -118,13 +118,14 @@ def mirror_charts(manifest: dict, manifest_file: str) -> None:
         shutil.rmtree("work/helm-chart-repo")
     os.rename("work/helm-chart-repo.tmp", "work/helm-chart-repo")
 
-    for new_chart in charts:
-        # FIXME: This isn't scalable
-        for chart in manifest["charts"]:
-            if new_chart["chart"] == chart["chart"] and new_chart["version"] == chart["version"]:
-                if new_chart["digest"] != chart["digest"]:
-                    raise Exception(f"Digest mismatch for chart: {new_chart['chart']}:{new_chart['version']}, got: {new_chart['digest']}, expected: {chart['digest']}")
-                break
+    if 'charts' in manifest:
+        for new_chart in charts:
+            # FIXME: This isn't scalable
+            for chart in manifest["charts"]:
+                if new_chart["chart"] == chart["chart"] and new_chart["version"] == chart["version"]:
+                    if new_chart["digest"] != chart["digest"]:
+                        raise Exception(f"Digest mismatch for chart: {new_chart['chart']}:{new_chart['version']}, got: {new_chart['digest']}, expected: {chart['digest']}")
+                    break
     manifest["charts"] = charts
     save_manifest(manifest, manifest_file)
 
@@ -255,18 +256,18 @@ def resolve_images(manifest: dict, manifest_file: str) -> None:
     if not Path("work/helm-chart-repo").is_dir():
         raise Exception('Please run run mirror-charts before resolve-images')
 
-    helm_config = manifest["helm"]
+    helm_config = manifest.get("helm", {})
     images = {}
     if "extra_images" in helm_config:
         for image in helm_config["extra_images"]:
             if image not in images:
                 images[image] = process_image(image)
-    for m in template_charts(helm_config["api_versions"], helm_config["values"]):
+    for m in template_charts(helm_config.get("api_versions", []), helm_config.get("values", {})):
         for image in extract_images(m):
             if image not in images:
                 images[image] = process_image(image)
     images = list(images.values())
-    for image in manifest["images"]:
+    for image in manifest.get("images", []):
         # FIXME: This isn't scalable
         if "skip" in image and image["skip"]:
             image.pop('skip')
