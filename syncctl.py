@@ -20,6 +20,9 @@ parser = ArgumentParser()
 parser.add_argument(
     "-v", "--verbose", action="store_true", help="Causes to print debugging messages about the progress"
 )
+parser.add_argument(
+    "-m", "--manifest", help="Specify manifest file to use", default="manifest.json"
+)
 subcommands = parser.add_subparsers(dest="subcommand")
 ci_parser = subcommands.add_parser(
     "mirror-yggdrasil",
@@ -83,7 +86,7 @@ def download_dependencies(chart: str) -> list[str]:
         dependencies.append(download_chart(chart["name"], chart["version"], chart["repository"]))
     return dependencies
 
-def mirror_charts(manifest: dict) -> None:
+def mirror_charts(manifest: dict, manifest_file: str) -> None:
     for dir in ["work/helm-chart-repo.tmp", "work/yggdrasil/yggdrasil/charts"]:
         if Path(dir).is_dir():
             shutil.rmtree(dir)
@@ -121,7 +124,7 @@ def mirror_charts(manifest: dict) -> None:
                     raise Exception(f"Digest mismatch for chart: {new_chart['chart']}:{new_chart['version']}, got: {new_chart['digest']}, expected: {chart['digest']}")
                 break
     manifest["charts"] = charts
-    save_manifest(manifest)
+    save_manifest(manifest, manifest_file)
 
 def mirror_image(image: str) -> None:
     if Path(f'work/images.tmp/{image}').is_dir():
@@ -136,7 +139,7 @@ def mirror_image(image: str) -> None:
     if p.returncode != 0:
         raise Exception(f'Error syncing image: {image}, error: {p.stderr}')
 
-def mirror_images(manifest: dict, incremental: bool) -> None:
+def mirror_images(manifest: dict, manifest_file: str, incremental: bool) -> None:
     os.makedirs("work/images", exist_ok=True)
     if Path('work/images.tmp').is_dir():
         shutil.rmtree("work/images.tmp")
@@ -162,7 +165,7 @@ def mirror_images(manifest: dict, incremental: bool) -> None:
     if Path('work/images').is_dir():
         shutil.rmtree("work/images")
     os.rename("work/images.tmp", "work/images")
-    save_manifest(manifest)
+    save_manifest(manifest, manifest_file)
 
 def template_charts(api_versions: list[str], values: dict[str, str]) -> Generator[int, None, None]:
     manifests = []
@@ -244,7 +247,7 @@ def process_image(image_reference: str) -> dict:
         image["tag"] = image_reference[image_reference.index(":")+1:]
     return image
 
-def resolve_images(manifest: dict) -> None:
+def resolve_images(manifest: dict, manifest_file: str) -> None:
     helm_config = manifest["helm"]
     images = {}
     if "extra_images" in helm_config:
@@ -265,7 +268,7 @@ def resolve_images(manifest: dict) -> None:
                     new_image["skip"] = True
                     break
     manifest["images"] = images
-    save_manifest(manifest)
+    save_manifest(manifest, manifest_file)
 
 def tar() -> None:
     name = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
@@ -274,20 +277,21 @@ def tar() -> None:
         tar.add("work", arcname=name)
     print(f"Created {name}.tar")
 
-def save_manifest(manifest: dict) -> dict:
-    with open("manifest.json.tmp", "w") as f:
+def save_manifest(manifest: dict, manifest_file: str) -> dict:
+    with open(f"{manifest_file}.tmp", "w") as f:
         json.dump(manifest, f, indent=4, sort_keys=True)
         f.write('\n')
-    os.rename("manifest.json.tmp", "manifest.json")
+    os.rename(f"{manifest_file}.tmp", manifest_file)
 
-def load_manifest() -> dict:
-    with open("manifest.json") as f:
+def load_manifest(manifest_file: str) -> dict:
+    with open(manifest_file) as f:
         return json.load(f)
 
 def main() -> None:
     args = parser.parse_args()
 
-    manifest = load_manifest()
+    manifest_file = args.manifest
+    manifest = load_manifest(manifest_file)
     os.makedirs("work", exist_ok=True)
 
     if args.verbose:
@@ -296,11 +300,11 @@ def main() -> None:
     if "mirror-yggdrasil" == args.subcommand:
         mirror_yggdrasil(manifest["yggdrasil_repository"])
     elif "mirror-charts" == args.subcommand:
-        mirror_charts(manifest)
+        mirror_charts(manifest, manifest_file)
     elif "mirror-images" == args.subcommand:
-        mirror_images(manifest, args.incremental)
+        mirror_images(manifest, manifest_file, args.incremental)
     elif "resolve-images" == args.subcommand:
-        resolve_images(manifest)
+        resolve_images(manifest, manifest_file)
     elif "tar" == args.subcommand:
         tar()
     else:
