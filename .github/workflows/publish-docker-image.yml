@@ -1,0 +1,33 @@
+name: Create and publish syncd image
+
+on:
+  push:
+    branches: ['main']
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: ./syncd
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ github.repository }}/syncd
