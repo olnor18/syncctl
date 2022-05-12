@@ -11,6 +11,8 @@ The manifest file must be stored in a Git repository, which the tool will check 
 ```sh
 $ ./syncd --help
 Usage of ./syncd:
+  -armored-keyring string
+        Armored keyring for verifying the manifest's Git repository commits
   -destination-chart-repository string
         Destination chart repository to push to
   -destination-registry string
