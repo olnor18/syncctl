@@ -21,6 +21,7 @@ import (
 var (
 	syncInterval                      uint
 	manifestGitRepository             string
+	armoredKeyRing                    string
 	sourceRegistry                    string
 	destinationRegistry               string
 	sourceChartRepository             string
@@ -32,6 +33,7 @@ var (
 func init() {
 	flag.UintVar(&syncInterval, "sync-interval", 60, "Synchronizing interval")
 	flag.StringVar(&manifestGitRepository, "manifest-git-repository", "", "Git repository to pull the manifest file from")
+	flag.StringVar(&armoredKeyRing, "armored-keyring", "", "Armored keyring for verifying the manifest's Git repository commits")
 	flag.StringVar(&sourceRegistry, "source-registry", "", "Source registry to pull from")
 	flag.StringVar(&destinationRegistry, "destination-registry", "", "Destination registry to push to")
 	flag.StringVar(&sourceChartRepository, "source-chart-repository", "", "Source chart repository to pull from")
@@ -164,7 +166,7 @@ func mirrorYggdrasil(src, dst string, yggdrasilRepository yggdrasilRepository) e
 	return err
 }
 
-func synchronize(lastSuccessfulSynchronization string) (string, error) {
+func synchronize(lastSuccessfulSynchronization string, keyRing *string) (string, error) {
 	// TODO: check without a full clone
 	fs := memfs.New()
 	r, err := git.Clone(memory.NewStorage(), fs, &git.CloneOptions{
@@ -176,9 +178,23 @@ func synchronize(lastSuccessfulSynchronization string) (string, error) {
 	if err != nil {
 		return lastSuccessfulSynchronization, err
 	}
-	hash := head.Hash().String()
-	if hash == lastSuccessfulSynchronization {
+	hash := head.Hash()
+	if hash.String() == lastSuccessfulSynchronization {
 		return lastSuccessfulSynchronization, nil
+	}
+
+	if keyRing != nil {
+		commit, err := r.CommitObject(hash)
+		if err != nil {
+			return lastSuccessfulSynchronization, err
+		}
+
+		if commit.PGPSignature == "" {
+			return lastSuccessfulSynchronization, fmt.Errorf("commit isn't signed: %v", commit.ID())
+		}
+		if _, err := commit.Verify(*keyRing); err != nil {
+			return lastSuccessfulSynchronization, err
+		}
 	}
 
 	file, err := fs.Open("manifest.json")
@@ -207,7 +223,7 @@ func synchronize(lastSuccessfulSynchronization string) (string, error) {
 	if err := mirrorYggdrasil(sourceYggdrasilGitRepository, destinationYggdrasilGitRepository, m.YggdrasilRepository); err != nil {
 		return lastSuccessfulSynchronization, err
 	}
-	return hash, nil
+	return hash.String(), nil
 }
 
 func main() {
@@ -215,9 +231,19 @@ func main() {
 
 	var lastSuccessfulSynchronization string
 
+	var keyRing *string
+	if armoredKeyRing != "" {
+		buf, err := ioutil.ReadFile(armoredKeyRing)
+		if err != nil {
+			log.Fatal(err)
+		}
+		s := string(buf)
+		keyRing = &s
+	}
+
 	log.Printf("Synchronizing every %d second", syncInterval)
 	for range time.Tick(time.Second * time.Duration(syncInterval)) {
-		hash, err := synchronize(lastSuccessfulSynchronization)
+		hash, err := synchronize(lastSuccessfulSynchronization, keyRing)
 		if err != nil {
 			log.Printf("Error synchronizing: %v", err)
 		} else {
