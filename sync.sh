@@ -50,7 +50,8 @@ sync_git() {
   kubectl -n support port-forward service/git-server-service 1234:80 >/dev/null &
   sleep 1
 
-  git -C yggdrasil push --force http://localhost:1234/git-test-project.git
+  repo="$(jq -r '.flux_repository.repository' -r manifest.json | cut -f 3- -d /)"
+  git -C yggdrasil push --force "http://localhost:1234/${repo}"
 
   jobs -p | xargs --no-run-if-empty kill
   trap -- EXIT
