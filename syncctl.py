@@ -325,6 +325,9 @@ def process_image(image_reference: str) -> dict:
     }
     if "@" in image_reference:
         image["image"] = image_reference[image_reference.index("/")+1:image_reference.index("@")]
+    elif ":" not in image_reference:
+        image["image"] = image_reference[image_reference.index("/")]
+        image["tag"] = "latest"
     else:
         image["image"] = image_reference[image_reference.index("/")+1:image_reference.index(":")]
         image["tag"] = image_reference[image_reference.index(":")+1:]
