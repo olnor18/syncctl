@@ -26,6 +26,9 @@ parser.add_argument(
     "-v", "--verbose", action="store_true", help="Causes to print debugging messages about the progress"
 )
 parser.add_argument(
+    "-c", "--config", help="Specify config file to use", default="config.json"
+)
+parser.add_argument(
     "-m", "--manifest", help="Specify manifest file to use", default="manifest.json"
 )
 subcommands = parser.add_subparsers(dest="subcommand")
@@ -52,7 +55,7 @@ ci_parser = subcommands.add_parser(
     help="create a tarball",
 )
 
-def mirror_flux(flux_config: dict) -> None:
+def mirror_flux(manifest: str, manifest_file: str, flux_config: dict) -> None:
     if not Path("work/flux").is_dir():
         repo = git.Repo.clone_from(flux_config["repository"], "work/flux")
     else:
@@ -60,6 +63,10 @@ def mirror_flux(flux_config: dict) -> None:
     if repo.head.object.hexsha != flux_config["commit"]:
         repo.git.fetch()
         repo.git.reset('--hard', flux_config["commit"])
+
+    manifest["flux_repository"] = flux_config
+    manifest["flux_repository"]["commit"] = repo.head.object.hexsha
+    save_manifest(manifest, manifest_file)
 
 def download_file(url: str, dest: str, hash: str = None) -> None:
     with requests.get(url) as r:
@@ -150,7 +157,7 @@ def template_flux(root_dir: str, git_repo: str, dir: str, git_repos: dict = coll
 
     return manifests
 
-def mirror_charts(manifest: dict, manifest_file: str) -> None:
+def mirror_charts(config: dict, manifest: dict, manifest_file: str) -> None:
     if not Path("work/flux").is_dir():
         raise Exception('Please run mirror-flux before mirror-charts')
     for dir in ["work/helm-chart-repo.tmp", "work/flux/flux/charts"]:
@@ -158,7 +165,7 @@ def mirror_charts(manifest: dict, manifest_file: str) -> None:
             shutil.rmtree(dir)
         os.makedirs(dir)
 
-    manifests = template_flux("work/flux", manifest["flux_repository"]["repository"], "work/flux/" + manifest["flux_repository"]["entrypoint"])
+    manifests = template_flux("work/flux", config["flux_repository"]["repository"], "work/flux/" + config["flux_repository"]["entrypoint"])
 
     helm_repos = collections.defaultdict(dict)
     helm_charts = []
@@ -334,18 +341,18 @@ def process_image(image_reference: str) -> dict:
         image["tag"] = image_reference[image_reference.index(":")+1:]
     return image
 
-def resolve_images(manifest: dict, manifest_file: str) -> None:
+def resolve_images(config: dict, manifest: dict, manifest_file: str) -> None:
     if not Path("work/helm-chart-repo").is_dir():
         raise Exception('Please run run mirror-charts before resolve-images')
 
-    helm_config = manifest.get("helm", {})
+    helm_config = config.get("helm", {})
     images = {}
     if "extra_images" in helm_config:
         for image in helm_config["extra_images"]:
             if image not in images:
                 images[image] = process_image(image)
 
-    manifests = template_flux("work/flux", manifest["flux_repository"]["repository"], "work/flux/" + manifest["flux_repository"]["entrypoint"])
+    manifests = template_flux("work/flux", config["flux_repository"]["repository"], "work/flux/" + config["flux_repository"]["entrypoint"])
     for m in itertools.chain(iter([manifests]), template_charts(helm_config.get("api_versions", []), helm_config.get("values", {}))):
         for image in extract_images(m):
             if image not in images:
@@ -381,15 +388,25 @@ def load_manifest(manifest_file: str) -> dict:
     with open(manifest_file) as f:
         return json.load(f)
 
+def load_config(config_file: str) -> dict:
+    with open(config_file) as f:
+        return json.load(f)
+
 def main() -> None:
     args = parser.parse_args()
 
+    config_file = args.config
     manifest_file = args.manifest
+
+    try:
+        config = load_config(config_file)
+    except FileNotFoundError:
+        print('config.json not found, please use the -c option to specify the config file')
+        sys.exit(1)
     try:
         manifest = load_manifest(manifest_file)
     except FileNotFoundError:
-        print('manifest.json not found, please use the -m option to specify the manifest file')
-        sys.exit(1)
+        manifest = {}
 
     os.makedirs("work", exist_ok=True)
 
@@ -397,13 +414,13 @@ def main() -> None:
         basicConfig(level=DEBUG)
 
     if "mirror-flux" == args.subcommand:
-        mirror_flux(manifest["flux_repository"])
+        mirror_flux(manifest, manifest_file, config["flux_repository"])
     elif "mirror-charts" == args.subcommand:
-        mirror_charts(manifest, manifest_file)
+        mirror_charts(config, manifest, manifest_file)
     elif "mirror-images" == args.subcommand:
         mirror_images(manifest, manifest_file, args.incremental)
     elif "resolve-images" == args.subcommand:
-        resolve_images(manifest, manifest_file)
+        resolve_images(config, manifest, manifest_file)
     elif "tar" == args.subcommand:
         tar(manifest_file)
     else:
