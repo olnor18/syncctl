@@ -13,6 +13,7 @@ import tempfile
 import collections
 import re
 import itertools
+import sys
 from pathlib import Path
 from argparse import ArgumentParser
 from logging import basicConfig
@@ -384,7 +385,12 @@ def main() -> None:
     args = parser.parse_args()
 
     manifest_file = args.manifest
-    manifest = load_manifest(manifest_file)
+    try:
+        manifest = load_manifest(manifest_file)
+    except FileNotFoundError:
+        print('manifest.json not found, please use the -m option to specify the manifest file')
+        sys.exit(1)
+
     os.makedirs("work", exist_ok=True)
 
     if args.verbose:
