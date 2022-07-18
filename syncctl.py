@@ -9,6 +9,7 @@ import subprocess
 import shutil
 import tarfile
 import datetime
+import tempfile
 from pathlib import Path
 from argparse import ArgumentParser
 from logging import basicConfig
@@ -65,17 +66,39 @@ def download_file(url: str, dest: str, hash: str = None) -> None:
             f.write(r.content)
 
 def download_chart(name: str, version: str, repository: str) -> dict:
-    with requests.get(f'{repository}/index.yaml') as r:
-        r.raise_for_status()
-        document = yaml.load(r.content, Loader=yaml.SafeLoader)
-        for chart in document["entries"][name]:
-            if chart["version"] == version:
-                url = chart["urls"][0]
-                debug(f"Downloading chart: {name}:{version}")
-                if not (url.startswith("http://") or url.startswith("https://")):
-                    url = f'{repository}/{url}'
-                download_file(url, f"work/helm-chart-repo.tmp/{os.path.basename(url)}", chart["digest"])
-                return {"chart": chart['name'], "version": chart['version'], "digest": chart["digest"]}
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        env = {
+            "HELM_CACHE_HOME": f'{tmpdirname}',
+            "HELM_CONFIG_HOME": f'{tmpdirname}'
+        }
+
+        p = subprocess.run(["helm", "repo", "add", "tmp", repository], capture_output=True, env=env)
+        if p.returncode != 0:
+            raise Exception(f'Error adding Helm repository: {repository}, error: {p.stderr}')
+
+        p = subprocess.run(["helm", "search", "repo", f'tmp/{name}', "--version", version, "--output", "json"], capture_output=True, text=True, env=env)
+        if p.returncode != 0:
+            raise Exception(f'Error searching Helm repository: {repository}, error: {p.stderr}')
+
+        charts = json.loads(p.stdout)
+        chart = next((chart for chart in charts if chart.get('name') == f'tmp/{name}'), None)
+        if len(charts) == 0 or chart == None:
+            raise Exception(f'Chart: {name}:{version} not found in {repository}')
+
+        debug(f"Resolved chart {name} version {version} to {chart.get('version')}")
+
+        version = chart.get('version')
+        with open(f'{tmpdirname}/repository/tmp-index.yaml') as f:
+            document = yaml.load(f, Loader=yaml.SafeLoader)
+            for chart in document["entries"][name]:
+                if chart["version"] == version:
+                    url = chart["urls"][0]
+                    debug(f"Downloading chart: {name}:{version}")
+                    if not (url.startswith("http://") or url.startswith("https://")):
+                        url = f'{repository}/{url}'
+                    download_file(url, f"work/helm-chart-repo.tmp/{os.path.basename(url)}", chart["digest"])
+                    return {"chart": chart['name'], "version": chart['version'], "digest": chart["digest"]}
+
     raise Exception(f'Chart: {name}:{version} not found in {repository}')
 
 def download_dependencies(chart: str) -> list[str]:
