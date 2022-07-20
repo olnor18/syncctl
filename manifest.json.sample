@@ -22,6 +22,7 @@
         }
     ],
     "flux_repository": {
+        "branch": "main",
         "commit": "c41e80920182f4dc44f36743c57f630ce0eabc57",
         "entrypoint": "clusters/dev/flux-system",
         "repository": "https://github.com/distributed-technologies/flux-test.git"

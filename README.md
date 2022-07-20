@@ -15,10 +15,11 @@ The config file contains the configuration used for generating the [manifest fil
 
 ### `flux_repository`
 
-The `flux_repository` section describes the flux repository to use.
+The `flux_repository` section describes the flux repository to use. A `branch` or `commit` can be specified, but not both.
 
 ```json
 "flux_repository": {
+    "branch": "main",
     "commit": "c41e80920182f4dc44f36743c57f630ce0eabc57",
     "entrypoint": "clusters/dev/flux-system",
     "repository": "https://github.com/distributed-technologies/flux-test.git"
@@ -57,6 +58,7 @@ The `flux_repository` section describes the Flux repository to package.
 
 ```json
 "flux_repository": {
+    "branch": "main",
     "commit": "c41e80920182f4dc44f36743c57f630ce0eabc57",
     "entrypoint": "clusters/dev/flux-system",
     "repository": "https://github.com/distributed-technologies/flux-test.git"

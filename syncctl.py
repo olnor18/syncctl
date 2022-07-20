@@ -60,7 +60,10 @@ def mirror_flux(manifest: str, manifest_file: str, flux_config: dict) -> None:
         repo = git.Repo.clone_from(flux_config["repository"], "work/flux")
     else:
         repo = git.Repo('work/flux')
-    if repo.head.object.hexsha != flux_config["commit"]:
+    if "branch" in flux_config:
+        repo.git.fetch()
+        repo.git.reset('--hard', f"origin/{flux_config['branch']}")
+    elif repo.head.object.hexsha != flux_config["commit"]:
         repo.git.fetch()
         repo.git.reset('--hard', flux_config["commit"])
 
