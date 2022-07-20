@@ -8,6 +8,10 @@
 * Python 3.9
 * [Requests](https://pypi.org/project/requests/)
 * [GitPython](https://pypi.org/project/GitPython/)
+* [PyYAML](https://pyyaml.org/wiki/PyYAML)
+* [kubectl](https://kubernetes.io/docs/reference/kubectl/)
+* [Helm](https://helm.sh/)
+* [skopeo](https://github.com/containers/skopeo)
 
 ## Config file
 
