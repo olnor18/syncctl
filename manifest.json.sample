@@ -1,60 +1,104 @@
 {
     "charts": [
         {
-            "chart": "nidhogg",
-            "digest": "af4901f2568b7ab123fafcd76ac4d6a99337e8f1be5dca24bf4fcd1280a054a4",
-            "version": "1.0.16"
+            "chart": "podinfo",
+            "digest": "4578752316dc3cb0aacc073171bc97f05465e650c5849b7faa2d530bb74cc6cc",
+            "version": "6.1.6"
         },
         {
-            "chart": "lightvessel",
-            "digest": "cbd24f12e42743ea0dee82c546e570b29d3fcccc2ee14709cf05730afcec25fc",
-            "version": "2.0.3"
-        },
-        {
-            "chart": "rook",
-            "digest": "0d9c16a988d6e0dfd6d4b02173d6334e61c122d1825c4f1467253b418a93f1c9",
-            "version": "0.1.3"
+            "chart": "rook-ceph",
+            "digest": "2e886e71f82bc997c2294e972cbce13df3d3e4ac0c17bcc3b27ff66bdfae1070",
+            "version": "v1.9.7"
         },
         {
             "chart": "rook-ceph-cluster",
-            "digest": "3f79af13669560572aeec4ad647440e70aab817a598753e47365fd0e7cb77ec2",
-            "version": "0.1.6"
+            "digest": "dfad0574738446bec3826e0aeecd171677b4f1df97e81b310c8ed42e06c13ed5",
+            "version": "v1.9.7"
+        },
+        {
+            "chart": "kube-prometheus-stack",
+            "digest": "d6eb7dde2624a174329e4bafc8b27d77279795ef1872533ac15804b7a7561ca0",
+            "version": "37.2.0"
         }
     ],
+    "flux_repository": {
+        "branch": "main",
+        "commit": "c41e80920182f4dc44f36743c57f630ce0eabc57",
+        "entrypoint": "clusters/dev/flux-system",
+        "repository": "https://github.com/distributed-technologies/flux-test.git"
+    },
     "images": [
         {
-            "digest": "sha256:0f4f3e1068268f0f5192797b003add304d9af5030b8ff341a7a716759d6102c7",
-            "image": "library/haproxy",
-            "registry": "docker.io",
-            "tag": "2.0.4"
-        },
-        {
-            "digest": "sha256:2e0e725c9282bfb7b08bea7dbbfd8dbce6410d670e3f8addd9b6540d818ad520",
-            "image": "argoproj/argocd",
-            "registry": "quay.io",
-            "tag": "v2.1.2"
-        },
-        {
-            "digest": "sha256:6b3cc1c385fbc7542244614e4432f2546c619b7850d44d2379c598309a06bed8",
-            "image": "dexidp/dex",
+            "digest": "sha256:3614ec75eb7e90356fdfcea00aaa6bf97a1b5b305a0ed9558f7dfab9ed43010c",
+            "image": "fluxcd/helm-controller",
             "registry": "ghcr.io",
-            "tag": "v2.30.0"
+            "tag": "v0.21.0"
         },
         {
-            "digest": "sha256:8061ca607db2a0c80010aeb5fc9bed0253448bc68711eaa14253a392f6c48280",
-            "image": "library/redis",
-            "registry": "docker.io",
-            "tag": "6.2.4-alpine"
+            "digest": "sha256:c9e8264460b79ef9aabfc67b5eca6994c01cd4bac684180902bab4332d85c651",
+            "image": "fluxcd/kustomize-controller",
+            "registry": "ghcr.io",
+            "tag": "v0.25.0"
         },
         {
-            "digest": "sha256:f3f51453e4261734f08579fe9c812c66ee443626690091401674be4fb724da70",
-            "image": "oliver006/redis_exporter",
+            "digest": "sha256:0aeb57c1d328114effee005de25d1871e834c09fde12441f6f2dc2bae1bdfbc8",
+            "image": "fluxcd/notification-controller",
+            "registry": "ghcr.io",
+            "tag": "v0.23.5"
+        },
+        {
+            "digest": "sha256:2b89709e7ff8cdda056d0c2e2a06e73a207a2e37ce916041de158d13a348d822",
+            "image": "fluxcd/source-controller",
+            "registry": "ghcr.io",
+            "tag": "v0.24.4"
+        },
+        {
+            "digest": "sha256:45dde4968305074d15a975f4897cd696d254a952e3bba0d5db91059641a162ff",
+            "image": "stefanprodan/podinfo",
+            "registry": "ghcr.io",
+            "tag": "6.1.6"
+        },
+        {
+            "digest": "sha256:c00ba61e2d7940413feb9d060a3df64d3b5010e01bdf563752cd8c4ba5ebde13",
+            "image": "rook/ceph",
             "registry": "docker.io",
-            "tag": "v1.15.1"
+            "tag": "v1.9.7"
+        },
+        {
+            "digest": "sha256:d5b2a2e2bb07a4a5a7c4bd9e54641cab63e1d2627622dbde17efc04849d3d30d",
+            "image": "prometheus/node-exporter",
+            "registry": "quay.io",
+            "tag": "v1.3.1"
+        },
+        {
+            "digest": "sha256:ef2a72bc0bc150ffb24cc8ea65ed4e6900c9a88753d9b18d1e1e89c77cc66efc",
+            "image": "kiwigrid/k8s-sidecar",
+            "registry": "quay.io",
+            "tag": "1.19.2"
+        },
+        {
+            "digest": "sha256:1e180fcaede581b8cc8e2ce8bc010daff9c64972023a0faaf226d92bd9840113",
+            "image": "grafana/grafana",
+            "registry": "docker.io",
+            "tag": "9.0.2"
+        },
+        {
+            "digest": "sha256:8f5d17635bcfcf49186154b9745e08015879ef1c01853f1ff74366db5da4137b",
+            "image": "kube-state-metrics/kube-state-metrics",
+            "registry": "registry.k8s.io",
+            "tag": "v2.5.0"
+        },
+        {
+            "digest": "sha256:1c190491ddbdc16e4a868dc8f575e34f48a1739656f53ef5179cac4a7252feff",
+            "image": "prometheus-operator/prometheus-operator",
+            "registry": "quay.io",
+            "tag": "v0.57.0"
+        },
+        {
+            "digest": "sha256:23a03c9c381fba54043d0f6148efeaf4c1ca2ed176e43455178b5c5ebf15ad70",
+            "image": "ingress-nginx/kube-webhook-certgen",
+            "registry": "k8s.gcr.io",
+            "tag": "v1.1.1"
         }
-    ],
-    "yggdrasil_repository": {
-        "commit": "00d6a62598bc7833bde3e067043fe842bbbccbbf",
-        "repository": "https://github.com/distributed-technologies/yggdrasil.git"
-    }
+    ]
 }

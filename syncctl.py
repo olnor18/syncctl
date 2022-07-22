@@ -10,6 +10,10 @@ import shutil
 import tarfile
 import datetime
 import tempfile
+import collections
+import re
+import itertools
+import sys
 from pathlib import Path
 from argparse import ArgumentParser
 from logging import basicConfig
@@ -22,12 +26,15 @@ parser.add_argument(
     "-v", "--verbose", action="store_true", help="Causes to print debugging messages about the progress"
 )
 parser.add_argument(
+    "-c", "--config", help="Specify config file to use", default="config.json"
+)
+parser.add_argument(
     "-m", "--manifest", help="Specify manifest file to use", default="manifest.json"
 )
 subcommands = parser.add_subparsers(dest="subcommand")
 ci_parser = subcommands.add_parser(
-    "mirror-yggdrasil",
-    help="mirror the yggdrasil git repository to the local fs",
+    "mirror-flux",
+    help="mirror the flux git repository to the local fs",
 )
 ci_parser = subcommands.add_parser(
     "mirror-charts",
@@ -48,14 +55,21 @@ ci_parser = subcommands.add_parser(
     help="create a tarball",
 )
 
-def mirror_yggdrasil(yggdrasil_config: dict) -> None:
-    if not Path("work/yggdrasil").is_dir():
-        repo = git.Repo.clone_from(yggdrasil_config["repository"], "work/yggdrasil")
+def mirror_flux(manifest: str, manifest_file: str, flux_config: dict) -> None:
+    if not Path("work/flux").is_dir():
+        repo = git.Repo.clone_from(flux_config["repository"], "work/flux")
     else:
-        repo = git.Repo('work/yggdrasil')
-    if repo.head.object.hexsha != yggdrasil_config["commit"]:
+        repo = git.Repo('work/flux')
+    if "branch" in flux_config:
         repo.git.fetch()
-        repo.git.reset('--hard', yggdrasil_config["commit"])
+        repo.git.reset('--hard', f"origin/{flux_config['branch']}")
+    elif repo.head.object.hexsha != flux_config["commit"]:
+        repo.git.fetch()
+        repo.git.reset('--hard', flux_config["commit"])
+
+    manifest["flux_repository"] = flux_config
+    manifest["flux_repository"]["commit"] = repo.head.object.hexsha
+    save_manifest(manifest, manifest_file)
 
 def download_file(url: str, dest: str, hash: str = None) -> None:
     with requests.get(url) as r:
@@ -101,37 +115,89 @@ def download_chart(name: str, version: str, repository: str) -> dict:
 
     raise Exception(f'Chart: {name}:{version} not found in {repository}')
 
-def download_dependencies(chart: str) -> list[str]:
-    dependencies = []
-    f = open(f"work/yggdrasil/{chart}/Chart.yaml")
-    index = yaml.load(f.read(), Loader=yaml.SafeLoader)
-    for chart in index["dependencies"]:
-        dependencies.append(download_chart(chart["name"], chart["version"], chart["repository"]))
-    return dependencies
+def template_flux(root_dir: str, git_repo: str, dir: str, git_repos: dict = collections.defaultdict(dict)) -> str:
+    p = subprocess.run(["kubectl", "kustomize", dir], capture_output=True, text=True)
+    if p.returncode != 0:
+        raise Exception(f'Error templating flux, dir: {dir}, error: {p.stderr}')
 
-def mirror_charts(manifest: dict, manifest_file: str) -> None:
-    if not Path("work/yggdrasil").is_dir():
-        raise Exception('Please run mirror-yggdrasil before mirror-charts')
-    for dir in ["work/helm-chart-repo.tmp", "work/yggdrasil/yggdrasil/charts"]:
+    # Return early if no manifest was outputted
+    if p.stdout == '':
+        return p.stdout
+
+    kustomizations = []
+
+    # https://regex101.com/r/AHQNR4/1
+    pattern = re.compile('^(https?|ssh)://(.*@)?([^/:]*)[^/]*(.*)$')
+    git_repo = pattern.sub(r'\3\4', git_repo)
+
+    documents = yaml.load_all(p.stdout, Loader=yaml.SafeLoader)
+    for document in documents:
+        if document["kind"] == "GitRepository":
+            repo = document.get('spec').get('url')
+            repo = pattern.sub(r'\3\4', repo)
+            if repo == git_repo:
+                metadata = document.get('metadata')
+                git_repos[metadata.get('namespace')][metadata.get('name')] = repo
+        elif document["kind"] == "Kustomization":
+            kustomizations.append(document)
+
+    manifests = p.stdout
+    for kustomization in kustomizations:
+        spec = kustomization.get('spec')
+        source_ref = spec.get('sourceRef')
+        namespace = kustomization.get('metadata').get('namespace')
+        git_name = source_ref.get('name')
+        git_namespace = source_ref.get('namespace', namespace)
+        if git_namespace in git_repos and git_name in git_repos.get(git_namespace):
+            new_dir = os.path.normpath(f"{root_dir}/{spec.get('path')}")
+            # Prevents looping
+            if new_dir == dir:
+                continue
+            new_manifests = template_flux(root_dir, git_repo, new_dir, git_repos)
+            if new_manifests != '':
+                manifests += '---\n'
+                manifests += new_manifests
+
+    return manifests
+
+def mirror_charts(config: dict, manifest: dict, manifest_file: str) -> None:
+    if not Path("work/flux").is_dir():
+        raise Exception('Please run mirror-flux before mirror-charts')
+    for dir in ["work/helm-chart-repo.tmp", "work/flux/flux/charts"]:
         if Path(dir).is_dir():
             shutil.rmtree(dir)
         os.makedirs(dir)
 
-    charts = []
-    charts.extend(download_dependencies("nidhogg"))
-    for dependency in download_dependencies("yggdrasil"):
-        charts.append(dependency)
-        shutil.copyfile(f"work/helm-chart-repo.tmp/{dependency['chart']}-{dependency['version']}.tgz", f"work/yggdrasil/yggdrasil/charts/{dependency['chart']}-{dependency['version']}.tgz")
+    manifests = template_flux("work/flux", config["flux_repository"]["repository"], "work/flux/" + config["flux_repository"]["entrypoint"])
 
-    p = subprocess.run(["helm", "template", "--set=loadbalancer.ipRangeStart=127.0.0.1", "work/yggdrasil/yggdrasil"], capture_output=True)
-    if p.returncode != 0:
-        raise Exception(f'Error templating yggdrasil, error: {p.stderr}')
-    documents = yaml.load_all(p.stdout, Loader=yaml.SafeLoader)
+    helm_repos = collections.defaultdict(dict)
+    helm_charts = []
+
+    documents = yaml.load_all(manifests, Loader=yaml.SafeLoader)
     for document in documents:
-        if document["apiVersion"] == "argoproj.io/v1alpha1" and document["kind"] == "Application" and 'chart' in document["spec"]["source"]:
-            source = document["spec"]["source"]
-            chart = download_chart(source["chart"], source["targetRevision"], source["repoURL"])
-            charts.append(chart)
+        if document["kind"] == "HelmRepository":
+            metadata = document.get('metadata')
+            helm_repos[metadata.get('namespace')][metadata.get('name')] = document.get('spec').get('url')
+        elif document["kind"] == "HelmRelease":
+            chart_spec = document.get('spec').get('chart').get('spec')
+            values = document.get('spec').get('values')
+            helm_charts.append({
+                "chart": chart_spec.get('chart'),
+                "version": chart_spec.get('version'),
+                "helm_repo": {
+                    "namespace": chart_spec.get('sourceRef').get('namespace'),
+                    "name": chart_spec.get('sourceRef').get('name'),
+                },
+                "values": values
+            })
+
+    charts = []
+    for chart in helm_charts:
+        helm_repo_namespace = chart.get('helm_repo').get('namespace')
+        helm_repo_name = chart.get('helm_repo').get('name')
+        helm_repo = helm_repos.get(helm_repo_namespace).get(helm_repo_name)
+        chart = download_chart(chart.get('chart'), str(chart.get('version') or ''), helm_repo)
+        charts.append(chart)
 
     p = subprocess.run(["helm", "repo", "index", "work/helm-chart-repo.tmp"], capture_output=True)
     if p.returncode != 0:
@@ -270,25 +336,31 @@ def process_image(image_reference: str) -> dict:
     }
     if "@" in image_reference:
         image["image"] = image_reference[image_reference.index("/")+1:image_reference.index("@")]
+    elif ":" not in image_reference:
+        image["image"] = image_reference[image_reference.index("/")]
+        image["tag"] = "latest"
     else:
         image["image"] = image_reference[image_reference.index("/")+1:image_reference.index(":")]
         image["tag"] = image_reference[image_reference.index(":")+1:]
     return image
 
-def resolve_images(manifest: dict, manifest_file: str) -> None:
+def resolve_images(config: dict, manifest: dict, manifest_file: str) -> None:
     if not Path("work/helm-chart-repo").is_dir():
         raise Exception('Please run run mirror-charts before resolve-images')
 
-    helm_config = manifest.get("helm", {})
+    helm_config = config.get("helm", {})
     images = {}
     if "extra_images" in helm_config:
         for image in helm_config["extra_images"]:
             if image not in images:
                 images[image] = process_image(image)
-    for m in template_charts(helm_config.get("api_versions", []), helm_config.get("values", {})):
+
+    manifests = template_flux("work/flux", config["flux_repository"]["repository"], "work/flux/" + config["flux_repository"]["entrypoint"])
+    for m in itertools.chain(iter([manifests]), template_charts(helm_config.get("api_versions", []), helm_config.get("values", {}))):
         for image in extract_images(m):
             if image not in images:
                 images[image] = process_image(image)
+
     images = list(images.values())
     for image in manifest.get("images", []):
         # FIXME: This isn't scalable
@@ -301,9 +373,10 @@ def resolve_images(manifest: dict, manifest_file: str) -> None:
     manifest["images"] = images
     save_manifest(manifest, manifest_file)
 
-def tar() -> None:
+def tar(manifest_file: str) -> None:
     name = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
     with tarfile.open(f"{name}.tar", "w") as tar:
+        tar.add(manifest_file, arcname=f"{name}/manifest.json")
         tar.add("sync.sh", arcname=f"{name}/sync.sh")
         tar.add("work", arcname=name)
     print(f"Created {name}.tar")
@@ -318,26 +391,41 @@ def load_manifest(manifest_file: str) -> dict:
     with open(manifest_file) as f:
         return json.load(f)
 
+def load_config(config_file: str) -> dict:
+    with open(config_file) as f:
+        return json.load(f)
+
 def main() -> None:
     args = parser.parse_args()
 
+    config_file = args.config
     manifest_file = args.manifest
-    manifest = load_manifest(manifest_file)
+
+    try:
+        config = load_config(config_file)
+    except FileNotFoundError:
+        print('config.json not found, please use the -c option to specify the config file')
+        sys.exit(1)
+    try:
+        manifest = load_manifest(manifest_file)
+    except FileNotFoundError:
+        manifest = {}
+
     os.makedirs("work", exist_ok=True)
 
     if args.verbose:
         basicConfig(level=DEBUG)
 
-    if "mirror-yggdrasil" == args.subcommand:
-        mirror_yggdrasil(manifest["yggdrasil_repository"])
+    if "mirror-flux" == args.subcommand:
+        mirror_flux(manifest, manifest_file, config["flux_repository"])
     elif "mirror-charts" == args.subcommand:
-        mirror_charts(manifest, manifest_file)
+        mirror_charts(config, manifest, manifest_file)
     elif "mirror-images" == args.subcommand:
         mirror_images(manifest, manifest_file, args.incremental)
     elif "resolve-images" == args.subcommand:
-        resolve_images(manifest, manifest_file)
+        resolve_images(config, manifest, manifest_file)
     elif "tar" == args.subcommand:
-        tar()
+        tar(manifest_file)
     else:
         parser.print_help()
 
