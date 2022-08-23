@@ -111,7 +111,7 @@ def download_chart(name: str, version: str, repository: str) -> dict:
                     if not (url.startswith("http://") or url.startswith("https://")):
                         url = f'{repository}/{url}'
                     download_file(url, f"work/helm-chart-repo.tmp/{os.path.basename(url)}", chart["digest"])
-                    return {"chart": chart['name'], "version": chart['version'], "digest": chart["digest"]}
+                    return {"chart": chart['name'], "version": chart['version'], "digest": chart["digest"], "repository": repository}
 
     raise Exception(f'Chart: {name}:{version} not found in {repository}')
 
@@ -168,7 +168,7 @@ def mirror_charts(config: dict, manifest: dict, manifest_file: str) -> None:
             shutil.rmtree(dir)
         os.makedirs(dir)
 
-    manifests = template_flux("work/flux", config["flux_repository"]["repository"], "work/flux/" + config["flux_repository"]["entrypoint"])
+    manifests = template_flux("work/flux", config["flux_repository"].get("flux_repository", config["flux_repository"]["repository"]), "work/flux/" + config["flux_repository"]["entrypoint"])
 
     helm_repos = collections.defaultdict(dict)
     helm_charts = []
@@ -355,7 +355,7 @@ def resolve_images(config: dict, manifest: dict, manifest_file: str) -> None:
             if image not in images:
                 images[image] = process_image(image)
 
-    manifests = template_flux("work/flux", config["flux_repository"]["repository"], "work/flux/" + config["flux_repository"]["entrypoint"])
+    manifests = template_flux("work/flux", config["flux_repository"].get("flux_repository", config["flux_repository"]["repository"]), "work/flux/" + config["flux_repository"]["entrypoint"])
     for m in itertools.chain(iter([manifests]), template_charts(helm_config.get("api_versions", []), helm_config.get("values", {}))):
         for image in extract_images(m):
             if image not in images:

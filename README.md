@@ -21,11 +21,15 @@ The config file contains the configuration used for generating the [manifest fil
 
 The `flux_repository` section describes the flux repository to use. A `branch` or `commit` can be specified, but not both.
 
+`flux_repository` is optional (`repository` is used if not specified) and specificies the Git URL used to check if a Flux `GitRepository` refers to the cloned repository.
+This should normally only be used if the domain or URL path are different, as `syncctl` ignores the protoctol, port and basic auth credentials when comparing Git URLs.
+
 ```json
 "flux_repository": {
     "branch": "main",
     "commit": "c41e80920182f4dc44f36743c57f630ce0eabc57",
     "entrypoint": "clusters/dev/flux-system",
+    "flux_repository": "https://github.com/distributed-technologies/flux-test.git",
     "repository": "https://github.com/distributed-technologies/flux-test.git"
 }
 ```

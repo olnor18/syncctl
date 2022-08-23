@@ -1,5 +1,6 @@
 #!/bin/bash
 set -o nounset -o errexit
+namespace="support"
 
 sync_image() {
   skopeo sync --all --dest-tls-verify=false --src dir --dest docker "images/${1}/${2}" "localhost:5000/${1}/${3}"
@@ -35,7 +36,6 @@ sync_images() {
 }
 
 sync_helm() {
-  namespace="support"
   pvc="helm-registry-data-pvc"
   vol_name="$(kubectl -n ${namespace} get pvc ${pvc} -o jsonpath="{.spec.volumeName}")"
 
@@ -45,18 +45,34 @@ sync_helm() {
   rsync -v -aP --delete helm-chart-repo/ "$helm_repo_data_dir"
 }
 
+# Credit: https://stackoverflow.com/a/37840948
+urldecode() {
+  "${*//+/ }"
+  echo -e "${_//%/\\x}"
+}
+
 sync_git() {
+  pvc="git-server-data-pvc"
+  vol_name="$(kubectl -n ${namespace} get pvc ${pvc} -o jsonpath="{.spec.volumeName}")"
+
+  git_repo_data_dir="$(compgen -G "/var/lib/docker/volumes/*/_data/local-path-provisioner/${vol_name}_${namespace}_${pvc}")"
+  repo="$(jq -r '.flux_repository.flux_repository' -r manifest.json | cut -f 3- -d / | cut -f 2 -d @)"
+  git_repo_dir="${git_repo_data_dir}/$(urldecode "${repo}")"
+  if [ ! -d "${git_repo_dir}" ]; then
+    mkdir -p "${git_repo_dir}"
+    git -C "${git_repo_dir}" init --bare
+    chown -R 1000:1000 "${git_repo_data_dir}/$(cut -f1 -d / <<< "${repo}")"
+  fi
+
   trap "jobs -p | xargs --no-run-if-empty kill" EXIT
   kubectl -n support port-forward service/git-server-service 1234:80 >/dev/null &
   sleep 1
 
-  repo="$(jq -r '.flux_repository.repository' -r manifest.json | cut -f 3- -d /)"
-  git -C yggdrasil push --force "http://localhost:1234/${repo}"
+  git -C flux push --force "http://localhost:1234/${repo}"
 
   jobs -p | xargs --no-run-if-empty kill
   trap -- EXIT
 }
-
 
 main() {
   sync_images
