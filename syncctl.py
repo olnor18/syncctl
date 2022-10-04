@@ -110,7 +110,10 @@ def download_chart(name: str, version: str, repository: str) -> dict:
                     debug(f"Downloading chart: {name}:{version}")
                     if not (url.startswith("http://") or url.startswith("https://")):
                         url = f'{repository}/{url}'
-                    download_file(url, f"work/helm-chart-repo.tmp/{os.path.basename(url)}", chart["digest"])
+                    hash = chart["digest"]
+                    if ":" in hash:
+                        hash = hash.split(":")[1]
+                    download_file(url, f"work/helm-chart-repo.tmp/{os.path.basename(url)}", hash)
                     return {"chart": chart['name'], "version": chart['version'], "digest": chart["digest"], "repository": repository}
 
     raise Exception(f'Chart: {name}:{version} not found in {repository}')
@@ -181,11 +184,13 @@ def mirror_charts(config: dict, manifest: dict, manifest_file: str) -> None:
         elif document["kind"] == "HelmRelease":
             chart_spec = document.get('spec').get('chart').get('spec')
             values = document.get('spec').get('values')
+            metadata_namespace = document.get('metadata').get('namespace')
+            namespace = chart_spec.get('sourceRef').get('namespace', metadata_namespace)
             helm_charts.append({
                 "chart": chart_spec.get('chart'),
                 "version": chart_spec.get('version'),
                 "helm_repo": {
-                    "namespace": chart_spec.get('sourceRef').get('namespace'),
+                    "namespace": namespace,
                     "name": chart_spec.get('sourceRef').get('name'),
                 },
                 "values": values
