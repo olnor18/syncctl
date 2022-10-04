@@ -181,11 +181,13 @@ def mirror_charts(config: dict, manifest: dict, manifest_file: str) -> None:
         elif document["kind"] == "HelmRelease":
             chart_spec = document.get('spec').get('chart').get('spec')
             values = document.get('spec').get('values')
+            metadata_namespace = document.get('metadata').get('namespace')
+            namespace = chart_spec.get('sourceRef').get('namespace', metadata_namespace)
             helm_charts.append({
                 "chart": chart_spec.get('chart'),
                 "version": chart_spec.get('version'),
                 "helm_repo": {
-                    "namespace": chart_spec.get('sourceRef').get('namespace'),
+                    "namespace": namespace,
                     "name": chart_spec.get('sourceRef').get('name'),
                 },
                 "values": values
