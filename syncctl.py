@@ -82,6 +82,7 @@ def download_file(url: str, dest: str, hash: str = None) -> None:
 def download_chart(name: str, version: str, repository: str) -> dict:
     with tempfile.TemporaryDirectory() as tmpdirname:
         env = {
+            "PATH": os.environ.copy().get('PATH'),
             "HELM_CACHE_HOME": f'{tmpdirname}',
             "HELM_CONFIG_HOME": f'{tmpdirname}'
         }
