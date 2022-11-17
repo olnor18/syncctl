@@ -37,9 +37,8 @@ sync_images() {
 
 sync_helm() {
   pvc="helm-registry-data-pvc"
-  vol_name="$(kubectl -n ${namespace} get pvc ${pvc} -o jsonpath="{.spec.volumeName}")"
 
-  helm_repo_data_dir="$(compgen -G "/var/lib/docker/volumes/*/_data/local-path-provisioner/${vol_name}_${namespace}_${pvc}")"
+  helm_repo_data_dir="/var/lib/docker/volumes/minikube/_data/hostpath-provisioner/${namespace}/${pvc}"
 
   echo "Synching the helm charts repo to the helm-server pvc"
   rsync -v -aP --delete helm-chart-repo/ "$helm_repo_data_dir"
@@ -53,9 +52,8 @@ urldecode() {
 
 sync_git() {
   pvc="git-server-data-pvc"
-  vol_name="$(kubectl -n ${namespace} get pvc ${pvc} -o jsonpath="{.spec.volumeName}")"
 
-  git_repo_data_dir="$(compgen -G "/var/lib/docker/volumes/*/_data/local-path-provisioner/${vol_name}_${namespace}_${pvc}")"
+  git_repo_data_dir="/var/lib/docker/volumes/minikube/_data/hostpath-provisioner/${namespace}/${pvc}"
   repo="$(jq -r '.flux_repository.flux_repository' -r manifest.json | cut -f 3- -d / | cut -f 2 -d @)"
   git_repo_dir="${git_repo_data_dir}/$(urldecode "${repo}")"
   if [ ! -d "${git_repo_dir}" ]; then
