@@ -185,6 +185,17 @@ def mirror_charts(config: dict, manifest: dict, manifest_file: str) -> None:
     helm_repos = collections.defaultdict(dict)
     helm_charts = []
 
+    # Get external helm repos. This is useful if helm repo for a chart is defined in parent flux repo
+    if "external_helm_repositories" in config:
+        external = template_flux("work/flux", "", config["external_helm_repositories"])
+        external_repo = yaml.load_all(external, Loader=yaml.SafeLoader)
+        for document in external_repo:
+            if document["kind"] == "HelmRepository":
+                metadata = document.get('metadata')
+                helm_repos[metadata.get('namespace')][metadata.get('name')] = document.get('spec').get('url')
+            else:
+                raise Warning("No helm repositories found in external sources")
+
     documents = yaml.load_all(manifests, Loader=yaml.SafeLoader)
     for document in documents:
         if document["kind"] == "HelmRepository":
@@ -209,6 +220,10 @@ def mirror_charts(config: dict, manifest: dict, manifest_file: str) -> None:
     for chart in helm_charts:
         helm_repo_namespace = chart.get('helm_repo').get('namespace')
         helm_repo_name = chart.get('helm_repo').get('name')
+
+        if len(helm_repos) == 0 or helm_repo_namespace not in helm_repos or helm_repo_name not in helm_repos.get(helm_repo_namespace):
+            raise Exception(f'Could not find helm repository "{helm_repo_name}" referenced in chart "{chart.get("chart")}"')
+
         helm_repo = helm_repos.get(helm_repo_namespace).get(helm_repo_name)
         chart = download_chart(chart.get('chart'), str(chart.get('version') or ''), helm_repo)
         charts.append(chart)

@@ -34,6 +34,13 @@ This should normally only be used if the domain or URL path are different, as `s
 }
 ```
 
+### `external_helm_repositories`
+The `external_helm_repositories` section is optional, and can be used to supply a path to external helm repositories (expecting a kustomization.yaml at the path). This is usable if charts reference a helm repository, that is defined in another flux repository. This is used when mirroring the charts.
+
+```json
+"external_helm_repositories": "path/to/kustomize/defined/helm-repositories"
+```
+
 ### `helm`
 
 The `helm` section describes how the charts should be templated for finding the images.
