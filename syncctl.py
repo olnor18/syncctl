@@ -120,6 +120,14 @@ def download_chart(name: str, version: str, repository: str) -> dict:
     raise Exception(f'Chart: {name}:{version} not found in {repository}')
 
 def template_flux(root_dir: str, git_repo: str, dir: str, git_repos: dict = collections.defaultdict(dict)) -> str:
+    """ Traverse and process Flux Kustomization and child repositories to kubernetes manifests
+
+    Args:
+        root_dir: Root of working directory
+        git_repo: URL of git repository to traverse
+        dir: Entrypoint directory where kustomize.yaml exists
+        git_repos: Internal arg used for recursive calls to process child git repositories
+    """
     p = subprocess.run(["kubectl", "kustomize", dir], capture_output=True, text=True)
     if p.returncode != 0:
         raise Exception(f'Error templating flux, dir: {dir}, error: {p.stderr}')
@@ -268,7 +276,6 @@ def mirror_images(manifest: dict, manifest_file: str, incremental: bool) -> None
     save_manifest(manifest, manifest_file)
 
 def template_charts(api_versions: list[str], values: dict[str, str]) -> Generator[int, None, None]:
-    manifests = []
     base_args = ["helm", "template"]
     for api_version in api_versions:
         base_args += ["--api-versions", api_version]
