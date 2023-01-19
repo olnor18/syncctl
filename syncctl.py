@@ -120,6 +120,14 @@ def download_chart(name: str, version: str, repository: str) -> dict:
     raise Exception(f'Chart: {name}:{version} not found in {repository}')
 
 def template_flux(root_dir: str, git_repo: str, dir: str, git_repos: dict = collections.defaultdict(dict)) -> str:
+    """ Traverse and process Flux Kustomization and child repositories to kubernetes manifests
+
+    Args:
+        root_dir: Root of working directory
+        git_repo: URL of git repository to traverse
+        dir: Entrypoint directory where kustomize.yaml exists
+        git_repos: Internal arg used for recursive calls to process child git repositories
+    """
     p = subprocess.run(["kubectl", "kustomize", dir], capture_output=True, text=True)
     if p.returncode != 0:
         raise Exception(f'Error templating flux, dir: {dir}, error: {p.stderr}')
@@ -177,6 +185,17 @@ def mirror_charts(config: dict, manifest: dict, manifest_file: str) -> None:
     helm_repos = collections.defaultdict(dict)
     helm_charts = []
 
+    # Get external helm repos. This is useful if helm repo for a chart is defined in parent flux repo
+    if "external_helm_repositories" in config:
+        external = template_flux("work/flux", "", config["external_helm_repositories"])
+        external_repo = yaml.load_all(external, Loader=yaml.SafeLoader)
+        for document in external_repo:
+            if document["kind"] == "HelmRepository":
+                metadata = document.get('metadata')
+                helm_repos[metadata.get('namespace')][metadata.get('name')] = document.get('spec').get('url')
+            else:
+                raise Warning("No helm repositories found in external sources")
+
     documents = yaml.load_all(manifests, Loader=yaml.SafeLoader)
     for document in documents:
         if document["kind"] == "HelmRepository":
@@ -201,6 +220,10 @@ def mirror_charts(config: dict, manifest: dict, manifest_file: str) -> None:
     for chart in helm_charts:
         helm_repo_namespace = chart.get('helm_repo').get('namespace')
         helm_repo_name = chart.get('helm_repo').get('name')
+
+        if len(helm_repos) == 0 or helm_repo_namespace not in helm_repos or helm_repo_name not in helm_repos.get(helm_repo_namespace):
+            raise Exception(f'Could not find helm repository "{helm_repo_name}" referenced in chart "{chart.get("chart")}"')
+
         helm_repo = helm_repos.get(helm_repo_namespace).get(helm_repo_name)
         chart = download_chart(chart.get('chart'), str(chart.get('version') or ''), helm_repo)
         charts.append(chart)
@@ -268,7 +291,6 @@ def mirror_images(manifest: dict, manifest_file: str, incremental: bool) -> None
     save_manifest(manifest, manifest_file)
 
 def template_charts(api_versions: list[str], values: dict[str, str]) -> Generator[int, None, None]:
-    manifests = []
     base_args = ["helm", "template"]
     for api_version in api_versions:
         base_args += ["--api-versions", api_version]
